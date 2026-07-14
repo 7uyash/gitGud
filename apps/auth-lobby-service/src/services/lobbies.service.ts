@@ -1,16 +1,11 @@
-import type { LobbyPlayerSnapshot } from '@gitgud/shared';
+import type { LobbyPlayerSnapshot, LobbySnapshotResponse, LobbyStartPayload } from '../contracts';
 
 import { LobbiesRepository } from '../repositories/lobbies.repository';
-
-export interface LobbyStartPayload {
-  lobbyId: string;
-  hostUserId: string;
-  playerIds: string[];
-  timerSeconds: number;
-}
+import { UsersRepository } from '../repositories/users.repository';
 
 export class LobbiesService {
   private readonly lobbiesRepository = new LobbiesRepository();
+  private readonly usersRepository = new UsersRepository();
 
   async createLobby(hostUserId: string, maxPlayers = 8) {
     return this.lobbiesRepository.createLobby(hostUserId, maxPlayers);
@@ -45,6 +40,10 @@ export class LobbiesService {
     return this.getLobbySnapshot(lobbyId);
   }
 
+  async getLobby(lobbyId: string): Promise<LobbySnapshotResponse> {
+    return this.getLobbySnapshot(lobbyId);
+  }
+
   async startLobby(lobbyId: string, hostUserId: string): Promise<LobbyStartPayload> {
     const lobby = await this.lobbiesRepository.findLobbyById(lobbyId);
     if (!lobby) {
@@ -74,20 +73,25 @@ export class LobbiesService {
     };
   }
 
-  private async getLobbySnapshot(lobbyId: string) {
+  private async getLobbySnapshot(lobbyId: string): Promise<LobbySnapshotResponse> {
     const lobby = await this.lobbiesRepository.findLobbyById(lobbyId);
     if (!lobby) {
       throw new Error('Lobby not found.');
     }
 
     const players = await this.lobbiesRepository.listLobbyPlayers(lobbyId);
-    const playerSnapshots: LobbyPlayerSnapshot[] = players.map((player) => ({
-      userId: player.userId,
-      username: player.userId,
-      avatarUrl: '',
-      displayName: player.userId,
-      isReady: player.isReady,
-    }));
+    const playerSnapshots: LobbyPlayerSnapshot[] = await Promise.all(
+      players.map(async (player) => {
+        const user = await this.usersRepository.findById(player.userId);
+        return {
+          userId: player.userId,
+          username: user?.username ?? player.userId,
+          avatarUrl: user?.avatarUrl ?? '',
+          displayName: user?.displayName ?? player.userId,
+          isReady: player.isReady,
+        };
+      }),
+    );
 
     return {
       lobby,

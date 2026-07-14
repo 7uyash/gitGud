@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 
 import { db, users } from '@gitgud/database';
-import type { GitHubProfile } from '@gitgud/shared';
+import type { GitHubProfile } from '../contracts';
 
 export class UsersRepository {
   async upsertGitHubUser(profile: GitHubProfile) {

@@ -2,16 +2,9 @@ import type { Request, Response } from 'express';
 
 import { authService } from '../services/auth.service';
 import { UsersRepository } from '../repositories/users.repository';
+import type { CurrentUserResponse } from '../contracts';
 
 const usersRepository = new UsersRepository();
-
-function readBearerToken(authorizationHeader: string | undefined): string {
-  if (!authorizationHeader?.startsWith('Bearer ')) {
-    throw new Error('Missing bearer token.');
-  }
-
-  return authorizationHeader.slice('Bearer '.length);
-}
 
 export class AuthController {
   async githubLogin(request: Request, response: Response) {
@@ -38,15 +31,19 @@ export class AuthController {
 
   async me(request: Request, response: Response) {
     try {
-      const token = readBearerToken(request.headers.authorization);
-      const claims = authService.verifyToken(token);
+      const claims = request.auth;
+      if (!claims) {
+        return response.status(401).json({ message: 'Unauthorized' });
+      }
+
       const user = await usersRepository.findById(claims.userId);
 
       if (!user) {
         return response.status(404).json({ message: 'User not found.' });
       }
 
-      return response.status(200).json({ user, claims });
+      const payload: CurrentUserResponse = { user, claims };
+      return response.status(200).json(payload);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unauthorized';
       return response.status(401).json({ message });

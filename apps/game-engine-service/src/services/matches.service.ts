@@ -1,9 +1,21 @@
-import type { CommitReviewPayload, CommitSubmitPayload, GameRole, MatchInitializationPayload, MeetingStartPayload, VoteCastPayload } from '@gitgud/shared';
+import type { CommitReviewPayload, CommitSubmitPayload, GameRole, MatchInitializationPayload, MatchInitializationResponse, MatchStateDto, MeetingStartPayload, ReviewFeedback, TaskSubmissionPayload, TaskSubmissionResponse, VoteCastPayload } from '../contracts';
 
 import { GameplayRepository } from '../repositories/gameplay.repository';
 import { LobbiesRepository } from '../repositories/lobbies.repository';
 import { MatchesRepository } from '../repositories/matches.repository';
 import { TasksRepository, type TaskTemplate } from '../repositories/tasks.repository';
+
+type MatchRow = Awaited<ReturnType<MatchesRepository['getMatch']>> extends infer Result ? NonNullable<Result> : never;
+type TaskRow = Awaited<ReturnType<TasksRepository['listTasks']>>[number];
+type MatchResultRow = Awaited<ReturnType<MatchesRepository['getMatchResult']>> extends infer Result ? NonNullable<Result> : never;
+
+function serializeDate(value: Date | string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  return value instanceof Date ? value.toISOString() : value;
+}
 
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items];
@@ -26,23 +38,25 @@ export class MatchesService {
       throw new Error('Lobby not found.');
     }
 
-    const roleAssignments = this.assignRoles(payload.players.map((player) => player.userId));
+    const roleAssignments = this.assignRoles(payload.playerIds);
     const match = await this.matchesRepository.createMatch(payload.lobbyId, roleAssignments, payload.timerSeconds);
     const taskTemplates = this.buildTaskTemplates();
     const createdTasks = await this.tasksRepository.createTasks(match.id, taskTemplates);
 
     const assignments = createdTasks.flatMap((task: (typeof createdTasks)[number], index: number) => {
-      const userId = payload.players[index % payload.players.length]?.userId;
+      const userId = payload.playerIds[index % payload.playerIds.length];
       return userId ? [{ matchId: match.id, taskId: task.id, userId }] : [];
     });
 
     await this.matchesRepository.createPlayerTaskAssignments(assignments);
 
-    return {
-      match,
+    const response: MatchInitializationResponse = {
+      match: this.serializeMatch(match),
       roleAssignments,
-      tasks: createdTasks,
+      tasks: createdTasks.map((task) => this.serializeTask(task)),
     };
+
+    return response;
   }
 
   async getMatch(matchId: string) {
@@ -50,17 +64,39 @@ export class MatchesService {
     const result = await this.matchesRepository.getMatchResult(matchId);
     const tasks = await this.tasksRepository.listTasks(matchId);
 
-    return {
-      match,
-      result,
-      tasks,
+    const response: MatchStateDto = {
+      match: match ? this.serializeMatch(match) : null,
+      result: result ? this.serializeMatchResult(result) : null,
+      tasks: tasks.map((task) => this.serializeTask(task)),
     };
+
+    return response;
   }
 
   async submitCommit(payload: CommitSubmitPayload) {
     const commit = await this.gameplayRepository.createCommit(payload.matchId, payload.userId, payload.commitHash, payload.message, payload.diffText);
     return {
       commit,
+    };
+  }
+
+  async reviewTaskSubmission(payload: TaskSubmissionPayload): Promise<TaskSubmissionResponse> {
+    const feedback = this.reviewSubmission(payload.taskText);
+    const commitHash = `submission-${payload.userId}-${Date.now()}`;
+    const commit = await this.gameplayRepository.createCommit(payload.matchId, payload.userId, commitHash, 'Task submission', payload.taskText);
+
+    if (feedback.status === 'PASS') {
+      await this.matchesRepository.completeAssignedTaskForUser(payload.matchId, payload.userId);
+      const shipReadiness = await this.calculateShipReadiness(payload.matchId);
+      await this.matchesRepository.updateMatch(payload.matchId, { shipReadiness });
+    }
+
+    return {
+      submissionId: commit.id,
+      matchId: payload.matchId,
+      userId: payload.userId,
+      taskText: payload.taskText,
+      review: feedback,
     };
   }
 
@@ -88,6 +124,17 @@ export class MatchesService {
     return {
       commit: updatedCommit,
     };
+  }
+
+  private reviewSubmission(taskText: string): ReviewFeedback {
+    const normalized = taskText.trim().toLowerCase();
+    const score = Math.max(45, Math.min(100, 65 + Math.min(30, normalized.length)));
+    const status = normalized.includes('fix') || normalized.includes('tested') || normalized.includes('validated') ? 'PASS' : 'NEEDS_WORK';
+    const feedback = status === 'PASS'
+      ? 'Submission shows a clear fix and validation path.'
+      : 'Possible issue: the submission needs a clearer fix or verification step.';
+
+    return { status, score, feedback };
   }
 
   async startMeeting(payload: MeetingStartPayload) {
@@ -159,7 +206,7 @@ export class MatchesService {
   async getRecap(matchId: string) {
     const matchResult = await this.matchesRepository.getMatchResult(matchId);
     if (matchResult) {
-      return matchResult;
+      return this.serializeMatchResult(matchResult);
     }
 
     const match = await this.matchesRepository.getMatch(matchId);
@@ -231,6 +278,30 @@ export class MatchesService {
     }
 
     return Object.keys((match.roleAssignments ?? {}) as Record<string, GameRole>).length;
+  }
+
+  private serializeMatch(match: MatchRow) {
+    return {
+      ...match,
+      startedAt: serializeDate(match.startedAt),
+      endedAt: serializeDate(match.endedAt),
+      createdAt: serializeDate(match.createdAt) ?? '',
+      roleAssignments: (match.roleAssignments ?? {}) as Record<string, GameRole>,
+    };
+  }
+
+  private serializeTask(task: TaskRow) {
+    return {
+      ...task,
+      createdAt: serializeDate(task.createdAt) ?? '',
+    };
+  }
+
+  private serializeMatchResult(matchResult: MatchResultRow) {
+    return {
+      ...matchResult,
+      createdAt: serializeDate(matchResult.createdAt) ?? '',
+    };
   }
 
   private buildLearningRecap(winnerTeam: string, context: string) {

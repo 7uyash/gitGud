@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 
 import { authLobbyEnv } from '../config/env';
 import { UsersRepository } from '../repositories/users.repository';
-import type { AuthSession, GitHubProfile, JwtClaims } from '@gitgud/shared';
+import type { AuthSession, GitHubProfile, JwtClaims } from '../contracts';
 
 export class AuthService {
   private readonly usersRepository = new UsersRepository();

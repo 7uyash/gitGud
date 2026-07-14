@@ -1,12 +1,32 @@
 import type { Server, Socket } from 'socket.io';
 
-import type { CommitReviewPayload, CommitSubmitPayload, MeetingStartPayload, VoteCastPayload } from '@gitgud/shared';
+import type { MatchInitializationResponse, TaskSubmissionResponse } from '../contracts';
 
 import { matchesService } from '../services/matches.service';
 import { verifyGameToken } from '../security/jwt';
 
 function matchRoom(matchId: string) {
   return `match:${matchId}`;
+}
+
+let ioInstance: Server | null = null;
+
+export function setGameSocketServer(io: Server) {
+  ioInstance = io;
+}
+
+export function broadcastMatchStarted(matchId: string, payload: MatchInitializationResponse) {
+  ioInstance?.to(matchRoom(matchId)).emit('match:started', payload);
+  payload.match?.roleAssignments && Object.entries(payload.match.roleAssignments).forEach(([userId, role]) => {
+    ioInstance?.to(matchRoom(matchId)).emit('role:assigned', { userId, role });
+  });
+  payload.tasks.forEach((task) => {
+    ioInstance?.to(matchRoom(matchId)).emit('task:assigned', task);
+  });
+}
+
+export function broadcastSubmissionReviewed(payload: TaskSubmissionResponse) {
+  ioInstance?.to(matchRoom(payload.matchId)).emit('submission:reviewed', payload);
 }
 
 async function joinMatchRoom(socket: Socket, payload: { matchId: string; token: string }) {
@@ -17,66 +37,40 @@ async function joinMatchRoom(socket: Socket, payload: { matchId: string; token: 
   }
 
   await socket.join(matchRoom(payload.matchId));
+  socket.emit('player:connected', { userId: payload.token });
   socket.emit('match:joined', match);
 }
 
 export function registerGameSockets(io: Server) {
+  setGameSocketServer(io);
   io.on('connection', (socket) => {
+    socket.emit('player:connected', { userId: socket.id });
+
     socket.on('match:join', async (payload: { matchId: string; token: string }) => {
       try {
         await joinMatchRoom(socket, payload);
+        io.to(matchRoom(payload.matchId)).emit('player:joined', { lobbyId: payload.matchId, userId: socket.id });
       } catch (error) {
         socket.emit('match:error', { message: error instanceof Error ? error.message : 'Failed to join match.' });
       }
     });
 
-    socket.on('commit:submit', async (payload: CommitSubmitPayload & { token: string }) => {
+    socket.on('match:leave', async (payload: { matchId: string }) => {
+      io.to(matchRoom(payload.matchId)).emit('player:left', { lobbyId: payload.matchId, userId: socket.id });
+      await socket.leave(matchRoom(payload.matchId));
+    });
+
+    socket.on('task:submit', async (payload: { matchId: string; token: string; taskText: string }) => {
       try {
         verifyGameToken(payload.token);
-        const result = await matchesService.submitCommit(payload);
-        io.to(matchRoom(payload.matchId)).emit('commit:submitted', result);
+        const result = await matchesService.reviewTaskSubmission({
+          matchId: payload.matchId,
+          userId: socket.id,
+          taskText: payload.taskText,
+        });
+        broadcastSubmissionReviewed(result);
       } catch (error) {
         socket.emit('match:error', { message: error instanceof Error ? error.message : 'Failed to submit commit.' });
-      }
-    });
-
-    socket.on('commit:review', async (payload: CommitReviewPayload & { token: string }) => {
-      try {
-        verifyGameToken(payload.token);
-        const result = await matchesService.reviewCommit(payload);
-        io.to(matchRoom(payload.matchId)).emit('commit:reviewed', result);
-      } catch (error) {
-        socket.emit('match:error', { message: error instanceof Error ? error.message : 'Failed to review commit.' });
-      }
-    });
-
-    socket.on('meeting:start', async (payload: MeetingStartPayload & { token: string }) => {
-      try {
-        verifyGameToken(payload.token);
-        const result = await matchesService.startMeeting(payload);
-        io.to(matchRoom(payload.matchId)).emit('meeting:started', result);
-      } catch (error) {
-        socket.emit('match:error', { message: error instanceof Error ? error.message : 'Failed to start meeting.' });
-      }
-    });
-
-    socket.on('vote:cast', async (payload: VoteCastPayload & { token: string }) => {
-      try {
-        verifyGameToken(payload.token);
-        const result = await matchesService.castVote(payload);
-        io.to(matchRoom(payload.matchId)).emit('vote:cast', result);
-      } catch (error) {
-        socket.emit('match:error', { message: error instanceof Error ? error.message : 'Failed to cast vote.' });
-      }
-    });
-
-    socket.on('timer:tick', async (payload: { matchId: string; seconds?: number; token: string }) => {
-      try {
-        verifyGameToken(payload.token);
-        const result = await matchesService.tickTimer(payload.matchId, payload.seconds ?? 1);
-        io.to(matchRoom(payload.matchId)).emit('timer:ticked', result);
-      } catch (error) {
-        socket.emit('match:error', { message: error instanceof Error ? error.message : 'Failed to tick timer.' });
       }
     });
   });

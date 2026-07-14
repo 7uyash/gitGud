@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 
 import { gameEngineEnv } from '../config/env';
-import type { JwtClaims } from '@gitgud/shared';
+import type { JwtClaims } from '../contracts';
 
 export function readBearerToken(authorizationHeader: string | undefined): string {
   if (!authorizationHeader?.startsWith('Bearer ')) {
