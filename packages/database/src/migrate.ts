@@ -12,8 +12,8 @@ const { resolve } = require('node:path');
 import { pool } from './client';
 
 const migrationFiles = [
-  resolve(process.cwd(), 'packages', 'database', 'migrations', '20260713000100_auth_lobby.sql'),
-  resolve(process.cwd(), 'packages', 'database', 'migrations', '20260713000200_game_engine.sql'),
+  resolve(__dirname, '..', 'migrations', '20260713000100_auth_lobby.sql'),
+  resolve(__dirname, '..', 'migrations', '20260713000200_game_engine.sql'),
 ];
 
 export async function runDatabaseMigrations() {
