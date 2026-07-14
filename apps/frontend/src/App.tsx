@@ -19,6 +19,13 @@ import { clearToken, getToken, setToken } from './auth';
 import { getGameSocket, resetGameSocket } from './socket';
 import type { MatchInitializationResponse, MatchStateDto, TaskSubmissionResponse } from './types';
 
+// New UI Components
+import { DiffReview } from './components/DiffReview';
+import { EmergencyMeeting } from './components/EmergencyMeeting';
+import { VotingResult } from './components/VotingResult';
+import { GameOver } from './components/GameOver';
+import { LearningRecap } from './components/LearningRecap';
+
 type CurrentUser = Awaited<ReturnType<typeof getCurrentUser>>['user'];
 
 function useAuthState() {
@@ -97,6 +104,11 @@ function AppShell() {
           <Route path="/lobbies/new" element={<RequireAuth token={auth.token} user={auth.user}><CreateLobbyPage /></RequireAuth>} />
           <Route path="/lobbies/:lobbyId" element={<RequireAuth token={auth.token} user={auth.user}><LobbyPage currentUserId={auth.user?.id ?? ''} /></RequireAuth>} />
           <Route path="/matches/:matchId" element={<RequireAuth token={auth.token} user={auth.user}><MatchPage currentUserId={auth.user?.id ?? ''} /></RequireAuth>} />
+          <Route path="/test/diff" element={<DiffReview />} />
+          <Route path="/test/meeting" element={<EmergencyMeeting />} />
+          <Route path="/test/voting" element={<VotingResult />} />
+          <Route path="/test/gameover" element={<GameOver />} />
+          <Route path="/test/recap" element={<LearningRecap />} />
           <Route path="*" element={<Navigate to={auth.token ? '/dashboard' : '/'} replace />} />
         </Routes>
       </main>
@@ -211,6 +223,15 @@ function DashboardPage({ user }: { user: CurrentUser | null }) {
         <div className="actions">
           <Link to="/lobbies/new" className="button">Create Lobby</Link>
           <Link to="/lobbies/demo-lobby" className="button ghost">Join Lobby</Link>
+        </div>
+        
+        <p className="kicker" style={{ marginTop: '24px' }}>Debug UI Previews</p>
+        <div className="actions" style={{ marginTop: '12px' }}>
+          <Link to="/test/diff" className="button ghost">Diff Review</Link>
+          <Link to="/test/meeting" className="button ghost">Emergency Meeting</Link>
+          <Link to="/test/voting" className="button ghost">Voting Result</Link>
+          <Link to="/test/gameover" className="button ghost">Game Over</Link>
+          <Link to="/test/recap" className="button ghost">Learning Recap</Link>
         </div>
       </section>
       <section className="mini-grid">
