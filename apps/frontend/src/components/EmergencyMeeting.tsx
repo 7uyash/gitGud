@@ -1,13 +1,30 @@
 import React, { useState, useEffect } from 'react';
 
-export function EmergencyMeeting({ onClose }: { onClose?: () => void }) {
-  const [timeLeft, setTimeLeft] = useState(47);
+export function EmergencyMeeting({ 
+  meeting,
+  players,
+  myUserId,
+  onVote,
+  onClose 
+}: { 
+  meeting: any;
+  players: any[];
+  myUserId: string;
+  onVote: (targetId: string | 'skip') => void;
+  onClose?: () => void;
+}) {
+  const [timeLeft, setTimeLeft] = useState(0);
   const [myVote, setMyVote] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = setInterval(() => setTimeLeft(t => Math.max(0, t - 1)), 1000);
+    const updateTimer = () => {
+      const remaining = Math.max(0, Math.floor((meeting.endTime - Date.now()) / 1000));
+      setTimeLeft(remaining);
+    };
+    updateTimer();
+    const timer = setInterval(updateTimer, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [meeting.endTime]);
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60).toString().padStart(2, '0');
@@ -15,22 +32,18 @@ export function EmergencyMeeting({ onClose }: { onClose?: () => void }) {
     return `${m}:${s}`;
   };
 
-  const players = [
-    { id: 'p1', name: '@octoplayer', votes: 0 },
-    { id: 'p2', name: '@debugbird', votes: 1 },
-    { id: 'p3', name: '@mergequeen', votes: 0 },
-    { id: 'p4', name: '@null_ninja', votes: 3, hasVoted: true },
-    { id: 'p5', name: '@hex_wizard', votes: 0 },
-    { id: 'p6', name: '@semver_sam', votes: 0 },
-    { id: 'p7', name: '@async_ana', votes: 0 },
-  ];
+  const handleConfirmVote = () => {
+    if (myVote) {
+      onVote(myVote);
+    }
+  };
 
   return (
     <div className="meeting-overlay">
       <div className="meeting-header">
         <div>
-          <p className="kicker" style={{ color: 'var(--danger-color)' }}>Emergency Meeting Called by @octoplayer</p>
-          <h2>Reason: suspicious commit on src/api/posts.ts</h2>
+          <p className="kicker" style={{ color: 'var(--danger-color)' }}>Emergency Meeting Called by {players.find(p => p.id === meeting.callerUserId)?.name ?? 'Someone'}</p>
+          <h2>Reason: {meeting.reason}</h2>
         </div>
         <div style={{ fontSize: '1.5rem', fontWeight: 600, border: '1px solid var(--danger-color)', padding: '8px 16px', borderRadius: '4px' }}>
           ⏱ Discussion {formatTime(timeLeft)}
@@ -76,7 +89,7 @@ export function EmergencyMeeting({ onClose }: { onClose?: () => void }) {
                   {p.id.toUpperCase()}
                 </div>
                 <strong style={{ fontSize: '1.1rem' }}>{p.name}</strong>
-                <span className="muted" style={{ fontSize: '0.8rem' }}>Votes: {p.votes}</span>
+                {/* <span className="muted" style={{ fontSize: '0.8rem' }}>Votes: {p.votes}</span> */}
                 <button className={`button ${p.hasVoted ? 'ghost' : ''}`} style={{ marginTop: 'auto' }}>
                   {p.hasVoted ? '✓ Voted' : 'Vote'}
                 </button>
@@ -90,7 +103,7 @@ export function EmergencyMeeting({ onClose }: { onClose?: () => void }) {
                 ⏭
               </div>
               <strong style={{ fontSize: '1.1rem' }}>Skip vote</strong>
-              <span className="muted" style={{ fontSize: '0.8rem' }}>Votes: 1</span>
+              {/* <span className="muted" style={{ fontSize: '0.8rem' }}>Votes: 1</span> */}
               <button className="button" style={{ marginTop: 'auto' }}>Vote Skip</button>
             </div>
           </div>
@@ -124,9 +137,10 @@ export function EmergencyMeeting({ onClose }: { onClose?: () => void }) {
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           {onClose && <button className="button ghost" onClick={onClose}>Close (Dev)</button>}
-          {/* <button className="button ghost" onClick={() => setMyVote(null)}>Clear vote</button> */}
-          <button className="button ghost" onClick={() => setMyVote(null)}>Change vote</button>
-          <button className="button dark" disabled={!myVote}>Confirm vote</button>
+          <button className="button ghost" onClick={() => setMyVote(null)} disabled={players.find(p => p.id === myUserId)?.hasVoted}>Change vote</button>
+          <button className="button dark" disabled={!myVote || players.find(p => p.id === myUserId)?.hasVoted} onClick={handleConfirmVote}>
+            {players.find(p => p.id === myUserId)?.hasVoted ? 'Vote Cast' : 'Confirm vote'}
+          </button>
         </div>
       </div>
     </div>

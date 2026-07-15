@@ -11,6 +11,17 @@ function matchRoom(matchId: string) {
 
 let ioInstance: Server | null = null;
 
+// Meeting state tracking: matchId -> meeting state
+interface MeetingState {
+  id: string;
+  matchId: string;
+  callerUserId: string;
+  reason: string;
+  endTime: number;
+  votes: Record<string, string | 'skip'>; // voterId -> targetUserId | 'skip'
+}
+const activeMeetings: Record<string, MeetingState> = {};
+
 export function setGameSocketServer(io: Server) {
   ioInstance = io;
 }
@@ -93,5 +104,116 @@ export function registerGameSockets(io: Server) {
         socket.emit('match:error', { message: error instanceof Error ? error.message : 'Failed to submit commit.' });
       }
     });
+
+    socket.on('meeting:called', (payload: { matchId: string; token: string; reason: string }) => {
+      try {
+        const decoded = verifyGameToken(payload.token);
+        const matchId = payload.matchId;
+        
+        if (activeMeetings[matchId]) {
+          socket.emit('match:error', { message: 'A meeting is already active.' });
+          return;
+        }
+
+        const meetingId = `meeting_${Date.now()}`;
+        const endTime = Date.now() + 45000; // 45 seconds
+
+        activeMeetings[matchId] = {
+          id: meetingId,
+          matchId,
+          callerUserId: decoded.userId,
+          reason: payload.reason,
+          endTime,
+          votes: {},
+        };
+
+        io.to(matchRoom(matchId)).emit('meeting:started', {
+          id: meetingId,
+          matchId,
+          callerUserId: decoded.userId,
+          reason: payload.reason,
+          endTime,
+        });
+
+        // Automatically end the meeting when time is up
+        setTimeout(() => {
+          if (activeMeetings[matchId] && activeMeetings[matchId].id === meetingId) {
+            endMeeting(matchId);
+          }
+        }, 45000);
+
+      } catch (error) {
+        socket.emit('match:error', { message: 'Failed to call meeting.' });
+      }
+    });
+
+    socket.on('meeting:vote', (payload: { matchId: string; token: string; targetUserId: string | 'skip' }) => {
+      try {
+        const decoded = verifyGameToken(payload.token);
+        const matchId = payload.matchId;
+        const meeting = activeMeetings[matchId];
+
+        if (!meeting) {
+          socket.emit('match:error', { message: 'No active meeting.' });
+          return;
+        }
+
+        meeting.votes[decoded.userId] = payload.targetUserId;
+
+        io.to(matchRoom(matchId)).emit('meeting:voted', {
+          userId: decoded.userId,
+        });
+
+        // Check if everyone has voted (assuming players are known on client side or we check via match service)
+        // For simplicity, we just rely on the timeout or a manual check if all connected players voted
+        
+      } catch (error) {
+        socket.emit('match:error', { message: 'Failed to cast vote.' });
+      }
+    });
   });
+}
+
+function endMeeting(matchId: string) {
+  const meeting = activeMeetings[matchId];
+  if (!meeting) return;
+
+  const voteCounts: Record<string, number> = {};
+  let skipCount = 0;
+
+  for (const vote of Object.values(meeting.votes)) {
+    if (vote === 'skip') {
+      skipCount++;
+    } else {
+      voteCounts[vote] = (voteCounts[vote] || 0) + 1;
+    }
+  }
+
+  let ejectedPlayerId: string | null = null;
+  let maxVotes = 0;
+  let isTie = false;
+
+  for (const [userId, count] of Object.entries(voteCounts)) {
+    if (count > maxVotes) {
+      maxVotes = count;
+      ejectedPlayerId = userId;
+      isTie = false;
+    } else if (count === maxVotes) {
+      isTie = true;
+    }
+  }
+
+  if (isTie || skipCount >= maxVotes) {
+    ejectedPlayerId = null;
+  }
+
+  ioInstance?.to(matchRoom(matchId)).emit('meeting:ended', {
+    meetingId: meeting.id,
+    votes: meeting.votes,
+    voteCounts,
+    skipCount,
+    ejectedPlayerId,
+  });
+
+  delete activeMeetings[matchId];
 }

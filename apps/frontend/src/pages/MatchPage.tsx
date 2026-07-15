@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { RoleReveal } from '../components/RoleReveal';
+import { EmergencyMeeting } from '../components/EmergencyMeeting';
+import { VotingResult } from '../components/VotingResult';
 import { getMatch, submitTask } from '../api';
 import { getGameSocket } from '../socket';
 import { getToken } from '../auth';
@@ -39,6 +41,9 @@ export function Feed() {
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [submittingTask, setSubmittingTask] = useState(false);
+  const [activeMeeting, setActiveMeeting] = useState<any>(null);
+  const [votingResult, setVotingResult] = useState<any>(null);
+  const [meetingPlayers, setMeetingPlayers] = useState<any[]>([]);
 
   useEffect(() => {
     if (!matchId) return;
@@ -66,15 +71,44 @@ export function Feed() {
       setChatMessages(prev => [...prev, { username: 'system', text: `Task submitted by ${payload.userId} - Score: ${payload.review?.score ?? 0}`, isSystem: true }]);
     };
 
+    const onMeetingStarted = (payload: any) => {
+      setActiveMeeting(payload);
+      setVotingResult(null);
+      setMatchState((currentMatchState: any) => {
+        setMeetingPlayers(Object.keys(currentMatchState?.match?.roleAssignments || {}).map(id => ({
+          id,
+          name: `@player_${id.substring(0,4)}`,
+          hasVoted: false,
+          votes: 0
+        })));
+        return currentMatchState;
+      });
+    };
+
+    const onMeetingVoted = (payload: { userId: string }) => {
+      setMeetingPlayers(prev => prev.map(p => p.id === payload.userId ? { ...p, hasVoted: true } : p));
+    };
+
+    const onMeetingEnded = (payload: any) => {
+      setActiveMeeting(null);
+      setVotingResult(payload);
+    };
+
     socket.on('editor:change', onEditorChange);
     socket.on('chat:message', onChatMessage);
     socket.on('submission:reviewed', onSubmissionReviewed);
+    socket.on('meeting:started', onMeetingStarted);
+    socket.on('meeting:voted', onMeetingVoted);
+    socket.on('meeting:ended', onMeetingEnded);
 
     return () => {
       mounted = false;
       socket.off('editor:change', onEditorChange);
       socket.off('chat:message', onChatMessage);
       socket.off('submission:reviewed', onSubmissionReviewed);
+      socket.off('meeting:started', onMeetingStarted);
+      socket.off('meeting:voted', onMeetingVoted);
+      socket.off('meeting:ended', onMeetingEnded);
       socket.emit('match:leave', { matchId });
     };
   }, [matchId]);
@@ -107,6 +141,13 @@ export function Feed() {
     }
   };
 
+  const handleCallMeeting = () => {
+    if (!matchId) return;
+    const reason = prompt('Why are you calling this meeting?');
+    if (!reason) return;
+    getGameSocket().emit('meeting:called', { matchId, token: getToken(), reason });
+  };
+
   if (!matchState) {
     return <div style={{ padding: '48px', textAlign: 'center' }}>Loading match...</div>;
   }
@@ -117,6 +158,23 @@ export function Feed() {
   return (
     <>
       {showRoleReveal && <RoleReveal onComplete={() => setShowRoleReveal(false)} />}
+      
+      {activeMeeting && (
+        <EmergencyMeeting 
+          meeting={activeMeeting}
+          players={meetingPlayers}
+          myUserId={currentUserId ?? ''}
+          onVote={(targetId) => getGameSocket().emit('meeting:vote', { matchId, token: getToken(), targetUserId: targetId })}
+        />
+      )}
+
+      {votingResult && (
+        <VotingResult 
+          result={votingResult}
+          players={meetingPlayers}
+          onClose={() => setVotingResult(null)}
+        />
+      )}
       
       <div className="match-ide-container" style={{ display: 'grid', gridTemplateColumns: '260px 1fr 300px', gridTemplateRows: 'auto 1fr auto', gap: '16px', height: 'calc(100vh - 84px)' }}>
         
@@ -176,7 +234,7 @@ export function Feed() {
             </div>
           </div>
 
-          <button className="button danger" style={{ width: '100%', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+          <button className="button danger" style={{ width: '100%', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }} onClick={handleCallMeeting} disabled={!!activeMeeting || !!votingResult}>
             <strong style={{ fontSize: '1.1rem' }}>🚨 Emergency Meeting</strong>
             <span style={{ fontSize: '0.8rem' }}>2 LEFT</span>
           </button>
