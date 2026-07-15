@@ -3,6 +3,5 @@ node_modules/
 dist/
 .turbo/
 .env
-.env.*
 coverage/
 .DS_Store

@@ -207,6 +207,282 @@ function LandingPage({ isAuthed }: { isAuthed: boolean }) {
         </aside>
       </div>
 
+      <div className="recent-matches-section" style={{ marginTop: '64px', borderTop: '1px solid var(--border-color)', paddingTop: '64px', paddingBottom: '64px', width: '100%' }}>
+        <p className="kicker" style={{ textAlign: 'center', marginBottom: '32px' }}>THE GAMEPLAY LOOP</p>
+        
+        <div style={{ position: 'relative', width: '100%', overflow: 'hidden', padding: '24px' }}>
+          
+          <style>{`
+            @keyframes walkAcross2D {
+              0% { left: -10%; bottom: 40px; transform: scaleX(1); }
+              10% { left: 16%; bottom: 40px; transform: scaleX(1); }
+              15% { left: 16%; bottom: 200px; transform: scaleX(1); } /* Stop at File 1 */
+              25% { left: 16%; bottom: 200px; transform: scaleX(1); } /* Waiting */
+              30% { left: 16%; bottom: 40px; transform: scaleX(1); }
+              40% { left: 50%; bottom: 40px; transform: scaleX(1); }
+              45% { left: 50%; bottom: 120px; transform: scaleX(1); } /* Stop at File 2 */
+              55% { left: 50%; bottom: 120px; transform: scaleX(1); } /* Waiting */
+              60% { left: 50%; bottom: 40px; transform: scaleX(1); }
+              70% { left: 83%; bottom: 40px; transform: scaleX(1); }
+              75% { left: 83%; bottom: 150px; transform: scaleX(1); } /* Stop at File 3 */
+              85% { left: 83%; bottom: 150px; transform: scaleX(1); } /* Waiting */
+              90% { left: 83%; bottom: 40px; transform: scaleX(1); }
+              100% { left: 110%; bottom: 40px; transform: scaleX(1); }
+            }
+            @keyframes bugToggle {
+              0%, 15% { opacity: 0; }
+              16%, 40% { opacity: 1; }
+              41%, 100% { opacity: 0; }
+            }
+            @keyframes bugToggle2 {
+              0%, 45% { opacity: 0; }
+              46%, 70% { opacity: 1; }
+              71%, 100% { opacity: 0; }
+            }
+            @keyframes bugToggle3 {
+              0%, 75% { opacity: 0; }
+              76%, 100% { opacity: 1; }
+            }
+            @keyframes floatTextHero {
+              0% { opacity: 0; transform: translateY(0); }
+              10%, 40% { opacity: 1; transform: translateY(-15px); }
+              50%, 100% { opacity: 0; transform: translateY(-25px); }
+            }
+            
+            .hero-window {
+              background: var(--bg-surface);
+              border: 1px solid var(--border-color);
+              border-radius: 8px;
+              overflow: hidden;
+              box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+              height: 480px;
+              position: relative;
+            }
+            .hero-window-header {
+              background: rgba(0,0,0,0.3);
+              padding: 12px 16px;
+              display: flex;
+              gap: 8px;
+              border-bottom: 1px solid var(--border-color);
+              align-items: center;
+            }
+            .hero-code-layer {
+              position: absolute;
+              top: 50px; left: 0; width: 100%; height: calc(100% - 50px);
+              padding: 24px;
+              font-family: var(--font-mono);
+              font-size: 0.8rem;
+              line-height: 1.6;
+              transition: opacity 0.3s ease;
+            }
+            .hero-code-bad {
+              color: var(--danger-color);
+              background: rgba(255,0,0,0.05);
+            }
+            
+            .hero-char {
+              position: absolute;
+              bottom: 40px;
+              width: 44px; height: 54px;
+              border-radius: 22px 22px 0 0;
+              border: 3px solid #000;
+              z-index: 10;
+              animation: walkAcross2D 24s linear infinite;
+            }
+            .hero-char::after {
+              content: ''; position: absolute; top: 10px; right: -4px;
+              width: 24px; height: 16px; background: #99d9ea;
+              border-radius: 12px; border: 2px solid #000;
+            }
+            .imposter-hero { background: var(--danger-color); }
+            .crewmate-hero { background: var(--success-color); animation-delay: 6s; }
+            
+          `}</style>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', width: '100%', maxWidth: '1400px', margin: '0 auto' }}>
+            
+            {/* File 1: auth.ts */}
+            <div className="hero-window">
+              <div className="hero-window-header">
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ff5f56' }} />
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ffbd2e' }} />
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#27c93f' }} />
+                <span style={{ marginLeft: '16px', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>auth.ts</span>
+              </div>
+              <div className="hero-code-layer" style={{ color: '#d4d4d4' }}>
+                <div style={{ color: '#c678dd' }}>import {'{'} verifyToken {'}'} from <span style={{ color: '#98c379' }}>'./jwt'</span>;</div>
+                <div style={{ color: '#c678dd' }}>import {'{'} db {'}'} from <span style={{ color: '#98c379' }}>'./db'</span>;</div>
+                <br/>
+                <div style={{ color: '#c678dd' }}>export async function <span style={{ color: '#61afef' }}>verifyAdmin</span>(req, res, next) {'{'}</div>
+                <div style={{ paddingLeft: '24px' }}>
+                  <div style={{ color: '#c678dd' }}>try {'{'}</div>
+                  <div style={{ paddingLeft: '24px' }}>
+                    <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>token</span> = req.headers.authorization;</div>
+                    <div style={{ color: '#c678dd' }}>if <span style={{ color: '#abb2bf' }}>(!token) return res.status(401);</span></div>
+                    <br/>
+                    <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>user</span> = await verifyToken(token);</div>
+                    <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>profile</span> = await db.users.find(user.id);</div>
+                    <br/>
+                    <div style={{ color: '#c678dd' }}>if <span style={{ color: '#abb2bf' }}>(!profile.isAdmin) return res.status(403);</span></div>
+                    <div style={{ color: '#c678dd' }}>next();</div>
+                  </div>
+                  <div style={{ color: '#c678dd' }}>{'}'} catch (err) {'{'}</div>
+                  <div style={{ paddingLeft: '24px' }}>return res.status(500);</div>
+                  <div style={{ color: '#c678dd' }}>{'}'}</div>
+                </div>
+                <div style={{ color: '#c678dd' }}>{'}'}</div>
+              </div>
+              <div className="hero-code-layer hero-code-bad" style={{ animation: 'bugToggle 24s infinite' }}>
+                <div style={{ color: '#c678dd' }}>import {'{'} verifyToken {'}'} from <span style={{ color: '#98c379' }}>'./jwt'</span>;</div>
+                <div style={{ color: '#c678dd' }}>import {'{'} db {'}'} from <span style={{ color: '#98c379' }}>'./db'</span>;</div>
+                <br/>
+                <div style={{ color: '#c678dd' }}>export async function <span style={{ color: '#61afef' }}>verifyAdmin</span>(req, res, next) {'{'}</div>
+                <div style={{ paddingLeft: '24px' }}>
+                  <div style={{ color: '#c678dd' }}>try {'{'}</div>
+                  <div style={{ paddingLeft: '24px' }}>
+                    <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>token</span> = req.headers.authorization;</div>
+                    <div style={{ color: '#c678dd' }}>if <span style={{ color: '#abb2bf' }}>(!token) return res.status(401);</span></div>
+                    <br/>
+                    <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>user</span> = await verifyToken(token);</div>
+                    <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>profile</span> = await db.users.find(user.id);</div>
+                    <br/>
+                    <div style={{ color: 'var(--danger-color)', textDecoration: 'line-through' }}>if (!profile.isAdmin) return res.status(403);</div>
+                    <div style={{ color: '#c678dd' }}>next(); <span style={{ color: 'var(--danger-color)' }}>// BUG INJECTED: BYPASS ADMIN CHECK</span></div>
+                  </div>
+                  <div style={{ color: '#c678dd' }}>{'}'} catch (err) {'{'}</div>
+                  <div style={{ paddingLeft: '24px' }}>return res.status(500);</div>
+                  <div style={{ color: '#c678dd' }}>{'}'}</div>
+                </div>
+                <div style={{ color: '#c678dd' }}>{'}'}</div>
+              </div>
+            </div>
+
+            {/* File 2: payment.ts */}
+            <div className="hero-window">
+              <div className="hero-window-header">
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ff5f56' }} />
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ffbd2e' }} />
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#27c93f' }} />
+                <span style={{ marginLeft: '16px', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>payment.ts</span>
+              </div>
+              <div className="hero-code-layer" style={{ color: '#d4d4d4' }}>
+                <div style={{ color: '#c678dd' }}>import Stripe from <span style={{ color: '#98c379' }}>'stripe'</span>;</div>
+                <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>stripe</span> = new Stripe(process.env.STRIPE_KEY);</div>
+                <br/>
+                <div style={{ color: '#c678dd' }}>export async function <span style={{ color: '#61afef' }}>processOrder</span>(orderId) {'{'}</div>
+                <div style={{ paddingLeft: '24px' }}>
+                  <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>order</span> = await getOrder(orderId);</div>
+                  <div style={{ color: '#c678dd' }}>if <span style={{ color: '#abb2bf' }}>(!order) throw new Error('Not found');</span></div>
+                  <br/>
+                  <div style={{ color: 'var(--text-muted)' }}>// Calculate total with 5% platform fee</div>
+                  <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>subtotal</span> = order.items.reduce((acc, item) {`=>`} acc + item.price, 0);</div>
+                  <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>fee</span> = subtotal * <span style={{ color: '#d19a66' }}>0.05</span>;</div>
+                  <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>total</span> = subtotal + fee;</div>
+                  <br/>
+                  <div style={{ color: '#abb2bf' }}>await stripe.paymentIntents.create({'{'}</div>
+                  <div style={{ paddingLeft: '24px' }}>amount: Math.round(total * 100),</div>
+                  <div style={{ paddingLeft: '24px' }}>currency: 'usd',</div>
+                  <div style={{ color: '#abb2bf' }}>{'}'});</div>
+                  <div style={{ color: '#c678dd' }}>return <span style={{ color: '#d19a66' }}>true</span>;</div>
+                </div>
+                <div style={{ color: '#c678dd' }}>{'}'}</div>
+              </div>
+              <div className="hero-code-layer hero-code-bad" style={{ animation: 'bugToggle2 24s infinite' }}>
+                <div style={{ color: '#c678dd' }}>import Stripe from <span style={{ color: '#98c379' }}>'stripe'</span>;</div>
+                <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>stripe</span> = new Stripe(process.env.STRIPE_KEY);</div>
+                <br/>
+                <div style={{ color: '#c678dd' }}>export async function <span style={{ color: '#61afef' }}>processOrder</span>(orderId) {'{'}</div>
+                <div style={{ paddingLeft: '24px' }}>
+                  <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>order</span> = await getOrder(orderId);</div>
+                  <div style={{ color: '#c678dd' }}>if <span style={{ color: '#abb2bf' }}>(!order) throw new Error('Not found');</span></div>
+                  <br/>
+                  <div style={{ color: 'var(--text-muted)' }}>// Calculate total with 5% platform fee</div>
+                  <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>subtotal</span> = order.items.reduce((acc, item) {`=>`} acc + item.price, 0);</div>
+                  <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>fee</span> = subtotal * <span style={{ color: '#d19a66' }}>0.00</span>; <span style={{ color: 'var(--danger-color)' }}>// BUG INJECTED: 0% FEE</span></div>
+                  <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>total</span> = subtotal + fee;</div>
+                  <br/>
+                  <div style={{ color: '#abb2bf' }}>await stripe.paymentIntents.create({'{'}</div>
+                  <div style={{ paddingLeft: '24px' }}>amount: Math.round(total * 100),</div>
+                  <div style={{ paddingLeft: '24px' }}>currency: 'usd',</div>
+                  <div style={{ color: '#abb2bf' }}>{'}'});</div>
+                  <div style={{ color: '#c678dd' }}>return <span style={{ color: '#d19a66' }}>true</span>;</div>
+                </div>
+                <div style={{ color: '#c678dd' }}>{'}'}</div>
+              </div>
+            </div>
+
+            {/* File 3: db.ts */}
+            <div className="hero-window">
+              <div className="hero-window-header">
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ff5f56' }} />
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ffbd2e' }} />
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#27c93f' }} />
+                <span style={{ marginLeft: '16px', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>db.ts</span>
+              </div>
+              <div className="hero-code-layer" style={{ color: '#d4d4d4' }}>
+                <div style={{ color: '#c678dd' }}>import {'{'} Pool {'}'} from <span style={{ color: '#98c379' }}>'pg'</span>;</div>
+                <br/>
+                <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>pool</span> = new Pool({'{'}</div>
+                <div style={{ paddingLeft: '24px' }}>connectionString: process.env.DATABASE_URL</div>
+                <div style={{ color: '#c678dd' }}>{'}'});</div>
+                <br/>
+                <div style={{ color: '#c678dd' }}>export async function <span style={{ color: '#61afef' }}>clearTestDatabase</span>() {'{'}</div>
+                <div style={{ paddingLeft: '24px' }}>
+                  <div style={{ color: 'var(--text-muted)' }}>// DANGER: Never run in production</div>
+                  <div style={{ color: '#c678dd' }}>if <span style={{ color: '#abb2bf' }}>(process.env.NODE_ENV !== 'production') {'{'}</span></div>
+                  <div style={{ paddingLeft: '24px' }}>
+                    <div style={{ color: '#abb2bf' }}>const client = await pool.connect();</div>
+                    <div style={{ color: '#abb2bf' }}>await client.query('DROP SCHEMA public CASCADE;');</div>
+                    <div style={{ color: '#abb2bf' }}>await client.query('CREATE SCHEMA public;');</div>
+                    <div style={{ color: '#abb2bf' }}>client.release();</div>
+                    <div style={{ color: '#c678dd' }}>return <span style={{ color: '#d19a66' }}>true</span>;</div>
+                  </div>
+                  <div style={{ color: '#c678dd' }}>{'}'}</div>
+                  <div style={{ color: '#c678dd' }}>throw new Error('Cannot clear prod db');</div>
+                </div>
+                <div style={{ color: '#c678dd' }}>{'}'}</div>
+              </div>
+              <div className="hero-code-layer hero-code-bad" style={{ animation: 'bugToggle3 24s infinite' }}>
+                <div style={{ color: '#c678dd' }}>import {'{'} Pool {'}'} from <span style={{ color: '#98c379' }}>'pg'</span>;</div>
+                <br/>
+                <div style={{ color: '#c678dd' }}>const <span style={{ color: '#e06c75' }}>pool</span> = new Pool({'{'}</div>
+                <div style={{ paddingLeft: '24px' }}>connectionString: process.env.DATABASE_URL</div>
+                <div style={{ color: '#c678dd' }}>{'}'});</div>
+                <br/>
+                <div style={{ color: '#c678dd' }}>export async function <span style={{ color: '#61afef' }}>clearTestDatabase</span>() {'{'}</div>
+                <div style={{ paddingLeft: '24px' }}>
+                  <div style={{ color: 'var(--text-muted)' }}>// DANGER: Never run in production</div>
+                  <div style={{ color: '#c678dd' }}>if <span style={{ color: '#abb2bf' }}>(process.env.NODE_ENV === 'production') {'{'} <span style={{ color: 'var(--danger-color)' }}>// BUG INJECTED</span></span></div>
+                  <div style={{ paddingLeft: '24px' }}>
+                    <div style={{ color: '#abb2bf' }}>const client = await pool.connect();</div>
+                    <div style={{ color: '#abb2bf' }}>await client.query('DROP SCHEMA public CASCADE;');</div>
+                    <div style={{ color: '#abb2bf' }}>await client.query('CREATE SCHEMA public;');</div>
+                    <div style={{ color: '#abb2bf' }}>client.release();</div>
+                    <div style={{ color: '#c678dd' }}>return <span style={{ color: '#d19a66' }}>true</span>;</div>
+                  </div>
+                  <div style={{ color: '#c678dd' }}>{'}'}</div>
+                  <div style={{ color: '#c678dd' }}>throw new Error('Cannot clear prod db');</div>
+                </div>
+                <div style={{ color: '#c678dd' }}>{'}'}</div>
+              </div>
+            </div>
+
+          </div>
+
+          <div className="hero-char imposter-hero">
+            <div style={{ position: 'absolute', background: '#000', color: 'var(--danger-color)', border: '1px solid var(--danger-color)', top: '-40px', left: '-20px', padding: '6px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', whiteSpace: 'nowrap', animation: 'floatTextHero 4s infinite', animationDelay: '0s' }}>
+              Injecting bugs... 🐛
+            </div>
+          </div>
+          <div className="hero-char crewmate-hero">
+            <div style={{ position: 'absolute', background: '#fff', color: '#000', top: '-40px', left: '-20px', padding: '6px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', whiteSpace: 'nowrap', animation: 'floatTextHero 4s infinite', animationDelay: '6s' }}>
+              Fixing code! 🛠️
+            </div>
+          </div>
+
+        </div>
+      </div>
+
       <div className="features-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginTop: '64px', borderTop: '1px solid var(--border-color)', paddingTop: '64px' }}>
         <div className="feature-card surface">
           <p className="kicker">FEATURE</p>
@@ -223,11 +499,6 @@ function LandingPage({ isAuthed }: { isAuthed: boolean }) {
           <h3>Post-match learning recap</h3>
           <p className="muted">AI reviews your performance and explains the concepts you missed.</p>
         </div>
-      </div>
-
-      <div className="recent-matches-section" style={{ marginTop: '64px', borderTop: '1px solid var(--border-color)', paddingTop: '64px' }}>
-        <p className="kicker">RECENT PUBLIC MATCHES</p>
-        <div className="preview-box" style={{ minHeight: '200px', marginTop: '24px' }}>Match history table</div>
       </div>
     </div>
   );
