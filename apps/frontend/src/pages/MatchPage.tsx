@@ -302,28 +302,28 @@ export function Feed() {
 
           <div className="surface" style={{ flex: 1, padding: 0, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
             {/* Explorer Column */}
-            <div style={{ width: '180px', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+            <div style={{ width: '180px', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', flexShrink: 20 }}>
               <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
                 <p className="kicker">EXPLORER</p>
               </div>
               <div className="file-tree" style={{ padding: '4px 0', fontSize: '0.8rem', overflowY: 'auto' }}>
                 <div style={{ padding: '2px 16px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>▾ <strong>src</strong></div>
                 <div style={{ padding: '2px 16px', paddingLeft: '28px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>▸ components</div>
-                <div style={{ padding: '2px 16px', paddingLeft: '44px', color: 'var(--text-muted)' }}>Header.tsx</div>
-                <div style={{ padding: '2px 16px', paddingLeft: '44px', color: 'var(--text-primary)', fontWeight: 'bold' }}>Feed.tsx *</div>
-                <div style={{ padding: '2px 16px', paddingLeft: '44px', color: 'var(--text-muted)' }}>PostCard.tsx</div>
+                <div style={{ padding: '2px 16px', paddingLeft: '44px', color: activeTab === 'Header.tsx' ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: activeTab === 'Header.tsx' ? 'bold' : 'normal', cursor: 'pointer' }} onClick={() => setActiveTab('Header.tsx')}>Header.tsx</div>
+                <div style={{ padding: '2px 16px', paddingLeft: '44px', color: activeTab === 'Feed.tsx' ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: activeTab === 'Feed.tsx' ? 'bold' : 'normal', cursor: 'pointer' }} onClick={() => setActiveTab('Feed.tsx')}>Feed.tsx</div>
+                <div style={{ padding: '2px 16px', paddingLeft: '44px', color: activeTab === 'PostCard.tsx' ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: activeTab === 'PostCard.tsx' ? 'bold' : 'normal', cursor: 'pointer' }} onClick={() => setActiveTab('PostCard.tsx')}>PostCard.tsx</div>
                 
                 <div style={{ padding: '2px 16px', paddingLeft: '28px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', marginTop: '4px' }}>▸ hooks</div>
-                <div style={{ padding: '2px 16px', paddingLeft: '44px', color: 'var(--text-muted)' }}>useAuth.ts</div>
+                <div style={{ padding: '2px 16px', paddingLeft: '44px', color: activeTab === 'useAuth.ts' ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: activeTab === 'useAuth.ts' ? 'bold' : 'normal', cursor: 'pointer' }} onClick={() => setActiveTab('useAuth.ts')}>useAuth.ts</div>
                 
                 <div style={{ padding: '2px 16px', paddingLeft: '28px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', marginTop: '4px' }}>▾ api</div>
-                <div style={{ padding: '2px 16px', paddingLeft: '44px', color: 'var(--text-muted)' }}>posts.ts</div>
+                <div style={{ padding: '2px 16px', paddingLeft: '44px', color: activeTab === 'posts.ts' ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: activeTab === 'posts.ts' ? 'bold' : 'normal', cursor: 'pointer' }} onClick={() => setActiveTab('posts.ts')}>posts.ts</div>
                 
-                <div style={{ padding: '2px 16px', paddingLeft: '28px', color: 'var(--text-muted)' }}>App.tsx</div>
+                <div style={{ padding: '2px 16px', paddingLeft: '28px', color: activeTab === 'App.tsx' ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: activeTab === 'App.tsx' ? 'bold' : 'normal', cursor: 'pointer' }} onClick={() => setActiveTab('App.tsx')}>App.tsx</div>
                 
                 <div style={{ padding: '2px 16px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', marginTop: '4px' }}>▸ <strong>tests</strong></div>
-                <div style={{ padding: '2px 16px', color: 'var(--text-muted)', marginTop: '2px' }}>package.json</div>
-                <div style={{ padding: '2px 16px', color: 'var(--text-muted)', marginTop: '2px' }}>README.md</div>
+                <div style={{ padding: '2px 16px', color: activeTab === 'package.json' ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: activeTab === 'package.json' ? 'bold' : 'normal', marginTop: '2px', cursor: 'pointer' }} onClick={() => setActiveTab('package.json')}>package.json</div>
+                <div style={{ padding: '2px 16px', color: activeTab === 'README.md' ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: activeTab === 'README.md' ? 'bold' : 'normal', marginTop: '2px', cursor: 'pointer' }} onClick={() => setActiveTab('README.md')}>README.md</div>
               </div>
             </div>
 
@@ -350,7 +350,7 @@ export function Feed() {
           </div>
 
           {/* Terminal / Output Area */}
-          <div className="surface" style={{ height: '180px', padding: 0, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+          <div className="surface" style={{ height: '140px', padding: 0, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
             <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.2)' }}>
               {['TERMINAL', 'PROBLEMS (2)', 'OUTPUT', 'TESTS'].map(tab => (
                 <div key={tab} className={`editor-tab ${tab === activeTerminalTab ? 'active' : ''}`} style={{ fontSize: '0.8rem', padding: '8px 16px', cursor: 'pointer' }} onClick={() => setActiveTerminalTab(tab)}>
