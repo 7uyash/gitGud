@@ -55,6 +55,7 @@ export function LobbyPage({ currentUserId }: { currentUserId?: string }) {
 
         <p className="kicker" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '16px' }}>Match Settings</p>
         
+        {/*
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div className="setting-card">
             <span className="kicker">Players</span>
@@ -79,6 +80,41 @@ export function LobbyPage({ currentUserId }: { currentUserId?: string }) {
           <div className="setting-card">
             <span className="kicker">Voice</span>
             <div style={{ fontSize: '1.2rem', marginTop: '8px' }}>off</div>
+          </div>
+        </div>
+        */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
+          <div className="setting-card">
+            <span className="kicker">Players</span>
+            <div style={{ fontSize: '1.2rem', marginTop: '8px' }}>8</div>
+          </div>
+          <div className="setting-card">
+            <span className="kicker">Imposters</span>
+            <div style={{ fontSize: '1.2rem', marginTop: '8px' }}>2</div>
+          </div>
+          <div className="setting-card">
+            <span className="kicker">Timer</span>
+            <div style={{ fontSize: '1.2rem', marginTop: '8px' }}>15 min</div>
+          </div>
+          <div className="setting-card">
+            <span className="kicker">Pack</span>
+            <div style={{ fontSize: '1.2rem', marginTop: '8px' }}>JS/TS v3</div>
+          </div>
+          <div className="setting-card">
+            <span className="kicker">Codebase</span>
+            <div style={{ fontSize: '1.2rem', marginTop: '8px' }}>mini-blog@1.4</div>
+          </div>
+          <div className="setting-card">
+            <span className="kicker">Voice</span>
+            <div style={{ fontSize: '1.2rem', marginTop: '8px' }}>off</div>
+          </div>
+          <div className="setting-card">
+            <span className="kicker">Spectators</span>
+            <div style={{ fontSize: '1.2rem', marginTop: '8px' }}>on</div>
+          </div>
+          <div className="setting-card">
+            <span className="kicker">Late Join</span>
+            <div style={{ fontSize: '1.2rem', marginTop: '8px' }}>60s</div>
           </div>
         </div>
 

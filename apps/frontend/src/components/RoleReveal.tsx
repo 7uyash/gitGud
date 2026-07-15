@@ -79,7 +79,15 @@ export function RoleReveal({ onComplete }: { onComplete: () => void }) {
           Continue ({countdown}s)
         </button>
 
+        {/*
         <p className="kicker" style={{ marginTop: '60px', opacity: 0.5 }}>
+          Do not share your role. Screenshots betray your team.
+        </p>
+        */}
+      </div>
+
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px', background: 'var(--bg-main)', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
+        <p className="kicker" style={{ margin: 0, opacity: 0.5 }}>
           Do not share your role. Screenshots betray your team.
         </p>
       </div>
