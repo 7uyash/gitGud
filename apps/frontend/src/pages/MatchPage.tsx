@@ -9,7 +9,7 @@ export function MatchPage({ currentUserId }: { currentUserId?: string }) {
     <>
       {showRoleReveal && <RoleReveal onComplete={() => setShowRoleReveal(false)} />}
       
-      <div className="match-ide-container" style={{ display: 'grid', gridTemplateColumns: '260px 1fr 300px', gridTemplateRows: 'auto 1fr', gap: '16px', height: 'calc(100vh - 84px)' }}>
+      <div className="match-ide-container" style={{ display: 'grid', gridTemplateColumns: '260px 1fr 300px', gridTemplateRows: 'auto 1fr auto', gap: '16px', height: 'calc(100vh - 84px)' }}>
         
         {/* Top Header Bar */}
         <div className="surface" style={{ gridColumn: '1 / -1', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -157,6 +157,7 @@ export function MatchPage({ currentUserId }: { currentUserId?: string }) {
               <div style={{ color: 'var(--danger-color)' }}>✕ Feed pagination appends (expected 20, got 10)</div>
               <div style={{ color: 'var(--accent-color)', marginTop: '8px' }}>$ <span style={{ animation: 'pulse 1s infinite' }}>_</span></div>
             </div>
+            {/*
             <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button className="button ghost">Run tests</button>
@@ -168,6 +169,7 @@ export function MatchPage({ currentUserId }: { currentUserId?: string }) {
                 <button className="button dark" style={{ background: 'var(--text-primary)', color: 'var(--bg-main)' }}>Submit task ▲</button>
               </div>
             </div>
+            */}
           </div>
 
         </div>
@@ -210,6 +212,19 @@ export function MatchPage({ currentUserId }: { currentUserId?: string }) {
             </div>
           </div>
 
+        </div>
+
+        {/* Global Action Footer */}
+        <div className="surface" style={{ gridColumn: '1 / -1', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button className="button ghost">Run tests</button>
+            <button className="button ghost">View commit history</button>
+            <button className="button ghost">Review open diffs (3)</button>
+          </div>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <span className="kicker">TASK: INTEGRATE /API/POSTS PAGINATION</span>
+            <button className="button dark" style={{ background: 'var(--text-primary)', color: 'var(--bg-main)' }}>Submit task ▲</button>
+          </div>
         </div>
 
       </div>

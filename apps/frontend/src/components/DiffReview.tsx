@@ -5,13 +5,30 @@ export function DiffReview() {
 
   return (
     <div className="diff-container">
+      {/* Top Header Spanning All Columns */}
+      <div className="surface" style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px' }}>
+        <div>
+          <p className="kicker">PULL REQUEST #12 · OPEN</p>
+          <h2 style={{ fontSize: '1.2rem', margin: '4px 0 0 0' }}>feat(feed): paginate posts endpoint <span className="muted" style={{ fontWeight: 'normal', fontSize: '1rem', marginLeft: '8px' }}>3f2a1c9</span></h2>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'grid', placeItems: 'center', fontSize: '0.8rem', border: '1px solid var(--border-color)' }}>P4</div>
+            <span style={{ fontSize: '0.9rem' }}>@null_ninja <span className="muted">· 2m ago</span></span>
+          </div>
+          <button className="button ghost">View file tree</button>
+        </div>
+      </div>
+
       {/* Left Sidebar */}
       <div className="diff-sidebar-left">
+        {/*
         <div className="surface">
           <p className="kicker">Pull Request #12 · Open</p>
           <h2 style={{ fontSize: '1.2rem', margin: '4px 0 0 0' }}>feat(feed): paginate posts endpoint</h2>
           <span className="muted" style={{ fontSize: '0.8rem' }}>3f2a1c9</span>
         </div>
+        */}
         
         <div className="surface" style={{ flex: 1 }}>
           <p className="kicker" style={{ marginBottom: '12px' }}>Changed Files · 3</p>
@@ -42,7 +59,7 @@ export function DiffReview() {
       <div className="diff-main">
         <div className="diff-header">
           <span style={{ fontWeight: 600 }}>src/api/posts.ts</span>
-          <button className="button ghost">View file tree</button>
+          {/* <button className="button ghost">View file tree</button> */}
         </div>
         
         <div className="diff-content">
@@ -104,7 +121,8 @@ export function DiffReview() {
           </div>
         </div>
         
-        {/* Actions Bar */}
+        {/* Actions Bar (Moved to footer) */}
+        {/*
         <div className="diff-actions-bar">
           <button className="button ghost">← Back to editor</button>
           <div style={{ display: 'flex', gap: '12px' }}>
@@ -113,6 +131,7 @@ export function DiffReview() {
             <button className="button dark" style={{ background: 'var(--success-color)', color: '#000', borderColor: 'var(--success-color)' }}>✓ Approve</button>
           </div>
         </div>
+        */}
       </div>
 
       {/* Right Sidebar */}
@@ -148,6 +167,17 @@ export function DiffReview() {
             <div><span style={{ color: 'var(--danger-color)' }}>✕</span> tests (1 failing)</div>
             <div><span className="muted">-</span> build (pending)</div>
           </div>
+        </div>
+      </div>
+
+      {/* Global Actions Footer Spanning All Columns */}
+      <div className="diff-actions-bar" style={{ gridColumn: '1 / -1', background: 'transparent', borderTop: 'none', padding: '0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+        <button className="button ghost">← Back to editor</button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button className="button ghost">Leave comment</button>
+          <button className="button danger">🚩 Flag suspicious</button>
+          <button className="button ghost">Request changes</button>
+          <button className="button dark" style={{ background: 'var(--success-color)', color: '#000', borderColor: 'var(--success-color)' }}>✓ Approve</button>
         </div>
       </div>
     </div>
