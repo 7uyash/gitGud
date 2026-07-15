@@ -1,10 +1,23 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { createLobby } from '../api';
 
 export function CreateLobbyPage() {
   const navigate = useNavigate();
   const [maxPlayers, setMaxPlayers] = useState(8);
   const [imposters, setImposters] = useState(2);
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleCreateLobby = async () => {
+    try {
+      setIsCreating(true);
+      const res = await createLobby(maxPlayers);
+      navigate(`/lobbies/${res.lobby.id}`);
+    } catch (e) {
+      alert('Failed to create lobby');
+      setIsCreating(false);
+    }
+  };
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 300px', gap: '24px' }}>
@@ -146,9 +159,14 @@ export function CreateLobbyPage() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <Link to="/lobbies/demo-lobby" className="button dark" style={{ padding: '16px', background: 'var(--text-primary)', color: '#000', fontSize: '1.1rem' }}>
-            Create & enter lobby →
-          </Link>
+          <button 
+            className="button dark" 
+            style={{ padding: '16px', background: 'var(--text-primary)', color: '#000', fontSize: '1.1rem' }} 
+            onClick={handleCreateLobby}
+            disabled={isCreating}
+          >
+            {isCreating ? 'Creating...' : 'Create & enter lobby →'}
+          </button>
           <Link to="/dashboard" className="button ghost" style={{ padding: '16px' }}>
             Cancel
           </Link>

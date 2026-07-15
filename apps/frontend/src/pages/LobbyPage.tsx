@@ -1,8 +1,103 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { getLobby, leaveLobby, setReady, startLobby } from '../api';
+import { getGameSocket } from '../socket';
 
 export function LobbyPage({ currentUserId }: { currentUserId?: string }) {
+  const { lobbyId } = useParams();
+  const navigate = useNavigate();
   const [chatMessage, setChatMessage] = useState('');
+  const [lobbyState, setLobbyState] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchLobby = async () => {
+    if (!lobbyId) return;
+    try {
+      const res = await getLobby(lobbyId);
+      setLobbyState(res);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const notifyChange = () => {
+    if (lobbyId) {
+      getGameSocket().emit('lobby:changed', lobbyId);
+    }
+  };
+
+  useEffect(() => {
+    if (!lobbyId) return;
+    fetchLobby();
+    const socket = getGameSocket();
+    socket.connect();
+    socket.emit('lobby:watch', lobbyId);
+
+    const onLobbyChanged = () => {
+      fetchLobby();
+    };
+    
+    // Also listen for match:started so everyone navigates to the game
+    const onMatchStarted = (payload: any) => {
+      navigate(`/match/${payload.matchId}`);
+    };
+
+    socket.on('lobby:changed', onLobbyChanged);
+    socket.on('match:started', onMatchStarted);
+
+    return () => {
+      socket.off('lobby:changed', onLobbyChanged);
+      socket.off('match:started', onMatchStarted);
+      socket.emit('lobby:unwatch', lobbyId);
+    };
+  }, [lobbyId, navigate]);
+
+  const handleLeave = async () => {
+    if (!lobbyId) return;
+    await leaveLobby(lobbyId);
+    notifyChange();
+    navigate('/dashboard');
+  };
+
+  const handleToggleReady = async (currentReadyState: boolean) => {
+    if (!lobbyId) return;
+    await setReady(lobbyId, !currentReadyState);
+    notifyChange();
+    fetchLobby(); // Optimistic fetch
+  };
+
+  const handleStartGame = async () => {
+    if (!lobbyId) return;
+    try {
+      const payload = await startLobby(lobbyId);
+      // Let the engine broadcast to the room, or we can just navigate.
+      // Wait, startLobby is in auth-lobby-service, it creates the DB entry but the engine needs to start.
+      // Actually, let's just trigger startLobby and then the backend or socket might tell everyone.
+      // Let's assume startLobby API sets status='starting'. We need to also broadcast so others know.
+      // Wait, if it sets status='starting', the engine polls or we can just manually navigate.
+      navigate(`/match/${lobbyId}`);
+      notifyChange(); // notify others if needed, but match:started should be used.
+    } catch (e) {
+      alert('Failed to start game: ' + (e instanceof Error ? e.message : String(e)));
+    }
+  };
+
+  if (loading || !lobbyState) {
+    return <div style={{ padding: '48px', textAlign: 'center' }}>Loading lobby...</div>;
+  }
+
+  const { lobby, players } = lobbyState;
+  const isHost = lobby.hostUserId === currentUserId;
+  const currentPlayer = players.find((p: any) => p.userId === currentUserId);
+  const isReady = currentPlayer?.isReady ?? false;
+  const readyCount = players.filter((p: any) => p.isReady).length;
+  const totalPlayers = players.length;
+  const allReady = readyCount === totalPlayers && totalPlayers >= 2;
+
+  // Render dummy slots
+  const emptySlots = Math.max(0, lobby.maxPlayers - players.length);
   
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr 340px', gap: '24px', minHeight: 'calc(100vh - 120px)' }}>
@@ -10,31 +105,31 @@ export function LobbyPage({ currentUserId }: { currentUserId?: string }) {
       {/* Left Sidebar - Players */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span className="kicker">Players 6/8</span>
-          <span className="kicker">Host</span>
+          <span className="kicker">Players {players.length}/{lobby.maxPlayers}</span>
+          {isHost && <span className="kicker">Host</span>}
         </div>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {[
-            { id: 'P1', name: '@octoplayer', isHost: true, isReady: true },
-            { id: 'P2', name: '@debugbird', isReady: true },
-            { id: 'P3', name: '@mergequeen', isReady: true },
-            { id: 'P4', name: '@null_ninja', isReady: false },
-            { id: 'P5', name: '@hex_wizard', isReady: true },
-            { id: 'P6', name: '@semver_sam', isReady: false },
-          ].map(p => (
-            <div key={p.id} className="surface" style={{ padding: '12px 16px', display: 'flex', gap: '16px', alignItems: 'center', borderColor: p.isReady ? 'var(--success-color)' : 'var(--border-color)' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'grid', placeItems: 'center' }}>{p.id}</div>
+          {players.map((p: any) => (
+            <div key={p.userId} className="surface" style={{ padding: '12px 16px', display: 'flex', gap: '16px', alignItems: 'center', borderColor: p.isReady ? 'var(--success-color)' : 'var(--border-color)' }}>
+              {p.avatarUrl ? (
+                <img src={p.avatarUrl} alt={p.username} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'grid', placeItems: 'center' }}>
+                  {p.displayName?.[0] ?? 'P'}
+                </div>
+              )}
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600 }}>{p.name} {p.isHost && <span className="muted">- host</span>}</div>
+                <div style={{ fontWeight: 600 }}>{p.displayName} {lobby.hostUserId === p.userId && <span className="muted">- host</span>}</div>
                 <div style={{ fontSize: '0.8rem', color: p.isReady ? 'var(--success-color)' : 'var(--text-muted)' }}>
                   {p.isReady ? '☑ READY' : '☐ NOT READY'}
                 </div>
               </div>
             </div>
           ))}
-          <div className="surface" style={{ borderStyle: 'dashed', textAlign: 'center', color: 'var(--text-muted)' }}>Empty slot</div>
-          <div className="surface" style={{ borderStyle: 'dashed', textAlign: 'center', color: 'var(--text-muted)' }}>Empty slot</div>
+          {Array.from({ length: emptySlots }).map((_, i) => (
+            <div key={i} className="surface" style={{ borderStyle: 'dashed', textAlign: 'center', color: 'var(--text-muted)' }}>Empty slot</div>
+          ))}
         </div>
       </div>
 
@@ -43,10 +138,10 @@ export function LobbyPage({ currentUserId }: { currentUserId?: string }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
           <div>
             <p className="kicker">Room</p>
-            <h1 style={{ margin: '8px 0', fontSize: '2.5rem' }}>react-refactor-run</h1>
+            <h1 style={{ margin: '8px 0', fontSize: '2.5rem' }}>Match #{lobby.id.slice(0, 4)}</h1>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <span className="muted">Code:</span> <strong>A2F-93K</strong>
-              <button className="button ghost">Copy</button>
+              <span className="muted">Code:</span> <strong>{lobby.joinCode}</strong>
+              <button className="button ghost" onClick={() => navigator.clipboard.writeText(lobby.joinCode)}>Copy</button>
               <button className="button ghost">Share link</button>
             </div>
           </div>
@@ -120,16 +215,36 @@ export function LobbyPage({ currentUserId }: { currentUserId?: string }) {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '32px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <button className="button dark">☐ I'm ready</button>
-            <span className="kicker">4 OF 6 PLAYERS READY</span>
+            <button 
+              className={`button ${isReady ? 'ghost' : 'dark'}`} 
+              onClick={() => handleToggleReady(isReady)}
+              style={isReady ? { borderColor: 'var(--success-color)', color: 'var(--success-color)' } : {}}
+            >
+              {isReady ? '☑ READY' : '☐ I\'m ready'}
+            </button>
+            <span className="kicker">{readyCount} OF {totalPlayers} PLAYERS READY</span>
           </div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '32px' }}>
-          <Link to="/dashboard" className="button ghost">← Leave lobby</Link>
+          <button className="button ghost" onClick={handleLeave}>← Leave lobby</button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <span className="kicker">HOST ONLY</span>
-            <button className="button dark" style={{ background: 'var(--success-color)', borderColor: 'var(--success-color)', color: '#000' }}>Start game ▶</button>
+            {isHost && (
+              <>
+                <span className="kicker">HOST ONLY</span>
+                <button 
+                  className="button dark" 
+                  style={{ background: allReady ? 'var(--success-color)' : 'var(--border-color)', borderColor: allReady ? 'var(--success-color)' : 'var(--border-color)', color: '#000' }}
+                  disabled={!allReady}
+                  onClick={handleStartGame}
+                >
+                  Start game ▶
+                </button>
+              </>
+            )}
+            {!isHost && (
+              <span className="kicker">WAITING FOR HOST...</span>
+            )}
           </div>
         </div>
       </div>

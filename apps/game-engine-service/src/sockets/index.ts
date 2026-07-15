@@ -60,6 +60,18 @@ export function registerGameSockets(io: Server) {
       await socket.leave(matchRoom(payload.matchId));
     });
 
+    socket.on('lobby:watch', (lobbyId: string) => {
+      socket.join(`lobby:${lobbyId}`);
+    });
+
+    socket.on('lobby:unwatch', (lobbyId: string) => {
+      socket.leave(`lobby:${lobbyId}`);
+    });
+
+    socket.on('lobby:changed', (lobbyId: string) => {
+      socket.to(`lobby:${lobbyId}`).emit('lobby:changed');
+    });
+
     socket.on('task:submit', async (payload: { matchId: string; token: string; taskText: string }) => {
       try {
         verifyGameToken(payload.token);
