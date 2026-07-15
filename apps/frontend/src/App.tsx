@@ -124,18 +124,19 @@ function AppShell() {
 
 function SiteHeader({ isAuthed, onLogout }: { isAuthed: boolean; onLogout: () => Promise<void> }) {
   return (
-    <header className="topbar">
+    <header className="topbar" style={{ background: 'transparent', borderBottom: '1px solid var(--border-color)', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderRadius: '0' }}>
       <Link to="/" className="brand">
-        <span className="brand-mark" />
+        <span className="brand-mark" style={{ background: 'transparent', border: '1px solid var(--text-primary)', borderRadius: '4px', boxShadow: 'none' }} />
         <span>GitGud</span>
       </Link>
       <nav className="topnav">
-        <Link to="/">Home</Link>
-        <Link to="/dashboard">Dashboard</Link>
+        <Link to="/docs">DOCS</Link>
+        <Link to="/about">ABOUT</Link>
+        <Link to="/github">GITHUB</Link>
         {isAuthed ? (
-          <button className="text-button" onClick={onLogout}>Logout</button>
+          <button className="button ghost" onClick={onLogout}>LOGOUT</button>
         ) : (
-          <Link to="/login" className="text-button">Login</Link>
+          <Link to="/login" className="button ghost" style={{ textTransform: 'none' }}>Login with GitHub</Link>
         )}
       </nav>
     </header>
@@ -152,41 +153,92 @@ function RequireAuth({ token, user, children }: { token: string | null; user: Cu
 
 function LandingPage({ isAuthed }: { isAuthed: boolean }) {
   return (
-    <div className="landing">
-      <section className="hero-panel">
-        <p className="kicker">Multiplayer social deduction for devs</p>
-        <h1>Minimal frontend. Real API calls. One working slice.</h1>
-        <p className="muted">Login, create or join a lobby, start a match, then submit a task and read the review agent response.</p>
-        <div className="actions">
-          <Link to={isAuthed ? '/dashboard' : '/login'} className="button">{isAuthed ? 'Open dashboard' : 'Login with GitHub'}</Link>
-          <Link to="/dashboard" className="button ghost">Dashboard</Link>
-        </div>
-      </section>
+    <div className="landing-page-container">
+      <div className="landing">
+        <section className="hero-panel" style={{ border: 'none', background: 'transparent', padding: '0', boxShadow: 'none' }}>
+          <p className="kicker">MULTIPLAYER - SOCIAL DEDUCTION - FOR DEVS</p>
+          <h1 style={{ fontSize: '3.5rem', marginBottom: '24px' }}>Find the bugs before they break production.</h1>
+          <p className="muted" style={{ fontSize: '1.2rem', maxWidth: '600px', marginBottom: '32px' }}>
+            Collaborate in a real codebase to fix bugs and ship features. But watch out—imposters are secretly introducing regressions.
+          </p>
+          <div className="actions" style={{ marginBottom: '24px' }}>
+            <Link to={isAuthed ? '/dashboard' : '/login'} className="button dark">
+              {isAuthed ? 'Open dashboard' : 'Login with GitHub'}
+            </Link>
+            <Link to="/lobbies/new" className="button ghost">Create Lobby</Link>
+            <Link to="/dashboard" className="button ghost">Join Lobby</Link>
+          </div>
+          <p className="label muted">6-9 PLAYERS - 1-2 IMPOSTERS - 15-25 MIN</p>
+        </section>
 
-      <aside className="preview-panel" aria-hidden="true">
-        <div className="preview-box">Landing preview</div>
-      </aside>
+        <aside className="preview-panel" aria-hidden="true" style={{ minHeight: '400px' }}>
+          <div className="preview-box">Hero illustration / Animated code diff preview</div>
+        </aside>
+      </div>
+
+      <div className="features-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginTop: '64px', borderTop: '1px solid var(--border-color)', paddingTop: '64px' }}>
+        <div className="feature-card surface">
+          <p className="kicker">FEATURE</p>
+          <h3>Real codebase tasks</h3>
+          <p className="muted">Read code, debug issues, and submit real fixes as tasks.</p>
+        </div>
+        <div className="feature-card surface">
+          <p className="kicker">FEATURE</p>
+          <h3>Real deduction gameplay</h3>
+          <p className="muted">Call meetings to inspect commits and vote out the imposters.</p>
+        </div>
+        <div className="feature-card surface">
+          <p className="kicker">FEATURE</p>
+          <h3>Post-match learning recap</h3>
+          <p className="muted">AI reviews your performance and explains the concepts you missed.</p>
+        </div>
+      </div>
+
+      <div className="recent-matches-section" style={{ marginTop: '64px', borderTop: '1px solid var(--border-color)', paddingTop: '64px' }}>
+        <p className="kicker">RECENT PUBLIC MATCHES</p>
+        <div className="preview-box" style={{ minHeight: '200px', marginTop: '24px' }}>Match history table</div>
+      </div>
     </div>
   );
 }
 
 function LoginPage({ onLogin, isAuthed }: { onLogin: () => void; isAuthed: boolean }) {
-  const navigate = useNavigate();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   if (isAuthed) {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const handleLogin = () => {
+    setIsRedirecting(true);
+    onLogin();
+  };
+
   return (
-    <div className="auth-layout">
-      <div className="auth-card">
-        <p className="kicker">Authentication</p>
-        <h2>Sign in to GitGud</h2>
-        <p className="muted">Use GitHub OAuth or the existing auth flow, then JWT is stored locally and attached automatically.</p>
-        <button className="button dark" onClick={onLogin}>Continue with GitHub</button>
-      </div>
-      <div className="preview-panel small" aria-hidden="true">
-        <div className="preview-box">OAuth consent preview</div>
+    <div className="auth-layout" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 200px)' }}>
+      <div className="auth-card" style={{ width: '100%', maxWidth: '480px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="auth-icon" style={{ width: '48px', height: '48px', margin: '0 auto', border: '1px solid var(--border-color)', borderRadius: '8px', display: 'grid', placeItems: 'center' }}>
+          <span className="brand-mark" style={{ width: '24px', height: '24px', borderRadius: '4px' }}></span>
+        </div>
+        <div>
+          <h2 style={{ marginBottom: '8px' }}>Sign in to GitGud</h2>
+          <p className="muted" style={{ margin: '0' }}>We use your GitHub identity for profile and match history.</p>
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '8px' }}>
+          <button className="button dark" style={{ width: '100%', padding: '16px' }} onClick={handleLogin}>
+            Continue with GitHub
+          </button>
+          
+          {isRedirecting && <p className="muted label" style={{ animation: 'pulse 1.5s infinite' }}>REDIRECTING TO GITHUB.COM/LOGIN...</p>}
+        </div>
+
+        <div className="preview-box" style={{ minHeight: '120px', marginTop: '16px' }}>OAuth consent preview</div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
+          <span className="muted">Terms - Privacy</span>
+          <Link to="/" className="muted" style={{ textDecoration: 'none' }}>&larr; Back to landing</Link>
+        </div>
       </div>
     </div>
   );
