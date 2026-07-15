@@ -1,4 +1,7 @@
 import type { CommitReviewPayload, CommitSubmitPayload, GameRole, MatchInitializationPayload, MatchInitializationResponse, MatchStateDto, MeetingStartPayload, ReviewFeedback, TaskSubmissionPayload, TaskSubmissionResponse, VoteCastPayload } from '../contracts';
+import { GoogleGenAI, Type } from '@google/genai';
+
+const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
 import { GameplayRepository } from '../repositories/gameplay.repository';
 import { LobbiesRepository } from '../repositories/lobbies.repository';
@@ -81,7 +84,16 @@ export class MatchesService {
   }
 
   async reviewTaskSubmission(payload: TaskSubmissionPayload): Promise<TaskSubmissionResponse> {
-    const feedback = this.reviewSubmission(payload.taskText);
+    const assignedTask = await this.matchesRepository.getAssignedTaskForUser(payload.matchId, payload.userId);
+    if (!assignedTask) {
+      throw new Error('No task assigned to this user in this match.');
+    }
+    const task = await this.tasksRepository.getTask(assignedTask.taskId);
+    if (!task) {
+      throw new Error('Task not found.');
+    }
+
+    const feedback = await this.reviewSubmission(task, payload.taskText);
     const commitHash = `submission-${payload.userId}-${Date.now()}`;
     const commit = await this.gameplayRepository.createCommit(payload.matchId, payload.userId, commitHash, 'Task submission', payload.taskText);
 
@@ -126,15 +138,63 @@ export class MatchesService {
     };
   }
 
-  private reviewSubmission(taskText: string): ReviewFeedback {
-    const normalized = taskText.trim().toLowerCase();
-    const score = Math.max(45, Math.min(100, 65 + Math.min(30, normalized.length)));
-    const status = normalized.includes('fix') || normalized.includes('tested') || normalized.includes('validated') ? 'PASS' : 'NEEDS_WORK';
-    const feedback = status === 'PASS'
-      ? 'Submission shows a clear fix and validation path.'
-      : 'Possible issue: the submission needs a clearer fix or verification step.';
+  private async reviewSubmission(task: TaskRow, taskText: string): Promise<ReviewFeedback> {
+    if (!ai) {
+      const normalized = taskText.trim().toLowerCase();
+      const score = Math.max(45, Math.min(100, 65 + Math.min(30, normalized.length)));
+      const status = normalized.includes('fix') || normalized.includes('tested') || normalized.includes('validated') ? 'PASS' : 'NEEDS_WORK';
+      const feedback = status === 'PASS'
+        ? 'Submission shows a clear fix and validation path.'
+        : 'Possible issue: the submission needs a clearer fix or verification step.';
+      return { status, score, feedback };
+    }
 
-    return { status, score, feedback };
+    const prompt = `
+You are a senior software engineer reviewing a pull request submission.
+Task Title: ${task.title}
+Task Description: ${task.description}
+Expected Solution:
+${task.expectedSolution ?? 'No expected solution provided. Make a best judgement based on the description.'}
+
+Player's Submission:
+${taskText}
+
+Evaluate the submission against the task and the expected solution.
+Determine if it is correct or incorrect. Provide a bug type (if incorrect), an explanation of why, a helpful hint, and a score (0 to 100).
+    `;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              correct: { type: Type.BOOLEAN, description: 'True if the submission solves the task.' },
+              bugType: { type: Type.STRING, description: 'Type of bug if incorrect (e.g. Logic Error, Syntax Error, Missing Feature, None).' },
+              explanation: { type: Type.STRING, description: 'Brief explanation of your evaluation.' },
+              hint: { type: Type.STRING, description: 'A helpful hint for the player.' },
+              score: { type: Type.INTEGER, description: 'A score from 0 to 100.' },
+            },
+            required: ['correct', 'bugType', 'explanation', 'hint', 'score'],
+          },
+        },
+      });
+
+      if (!response.text) throw new Error('No text returned from Gemini');
+      
+      const parsed = JSON.parse(response.text);
+      return {
+        status: parsed.correct ? 'PASS' : 'NEEDS_WORK',
+        score: parsed.score,
+        feedback: `${parsed.explanation}\nHint: ${parsed.hint}`,
+      };
+    } catch (e) {
+      console.error('AI Review Error:', e);
+      return { status: 'NEEDS_WORK', score: 0, feedback: 'Error analyzing submission.' };
+    }
   }
 
   async startMeeting(payload: MeetingStartPayload) {
@@ -238,24 +298,28 @@ export class MatchesService {
         description: 'Repair the test path that is preventing the feature branch from merging.',
         difficulty: 'medium',
         isSabotage: false,
+        expectedSolution: 'import { render, screen } from "@testing-library/react";\nimport App from "./App";\n\ntest("renders app", () => {\n  render(<App />);\n  const linkElement = screen.getByText(/learn react/i);\n  expect(linkElement).toBeInTheDocument();\n});',
       },
       {
         title: 'Review API payload mismatch',
         description: 'Compare the client contract to the server response and patch the mismatch.',
         difficulty: 'medium',
         isSabotage: false,
+        expectedSolution: 'interface Payload {\n  userId: string;\n  status: "active" | "inactive";\n}\n\nfunction parsePayload(data: any): Payload {\n  return {\n    userId: data.user_id,\n    status: data.is_active ? "active" : "inactive",\n  };\n}',
       },
       {
         title: 'Investigate timeout regression',
         description: 'Find the source of the request timeout before the build pipeline fails again.',
         difficulty: 'hard',
         isSabotage: false,
+        expectedSolution: 'async function fetchData() {\n  const controller = new AbortController();\n  const timeoutId = setTimeout(() => controller.abort(), 5000);\n  try {\n    const response = await fetch("/api/data", { signal: controller.signal });\n    return await response.json();\n  } finally {\n    clearTimeout(timeoutId);\n  }\n}',
       },
       {
         title: 'Remove hidden sabotage',
         description: 'Identify and patch the realistic fault slipped into the project by the imposter.',
         difficulty: 'hard',
         isSabotage: true,
+        expectedSolution: 'function processPayment(amount: number) {\n  if (amount <= 0) throw new Error("Invalid amount");\n  // REMOVED: amount = amount * -1; \n  return externalPaymentService.charge(amount);\n}',
       },
     ];
   }

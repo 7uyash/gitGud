@@ -62,6 +62,7 @@ export const tasks = pgTable('tasks', {
   difficulty: text('difficulty').notNull(),
   status: text('status').notNull().default('todo'),
   isSabotage: boolean('is_sabotage').notNull().default(false),
+  expectedSolution: text('expected_solution'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 

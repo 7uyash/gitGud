@@ -9,6 +9,7 @@ export interface TaskTemplate {
   description: string;
   difficulty: string;
   isSabotage: boolean;
+  expectedSolution: string;
 }
 
 export class TasksRepository {
@@ -26,6 +27,7 @@ export class TasksRepository {
           description: template.description,
           difficulty: template.difficulty,
           isSabotage: template.isSabotage,
+          expectedSolution: template.expectedSolution,
         })),
       )
       .returning();
@@ -37,6 +39,11 @@ export class TasksRepository {
 
   async markTaskComplete(taskId: string): Promise<TaskRow | null> {
     const [record] = await db.update(tasks).set({ status: 'done' }).where(eq(tasks.id, taskId)).returning();
+    return record ?? null;
+  }
+
+  async getTask(taskId: string): Promise<TaskRow | null> {
+    const [record] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
     return record ?? null;
   }
 }

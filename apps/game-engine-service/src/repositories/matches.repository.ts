@@ -56,6 +56,15 @@ export class MatchesRepository {
     return assignment;
   }
 
+  async getAssignedTaskForUser(matchId: string, userId: string): Promise<PlayerTaskRow | null> {
+    const [assignment] = await db
+      .select()
+      .from(playerTasks)
+      .where(and(eq(playerTasks.matchId, matchId), eq(playerTasks.userId, userId)))
+      .limit(1);
+    return assignment ?? null;
+  }
+
   async countCompletedTasks(matchId: string): Promise<number> {
     const completedTasks = await db
       .select()
