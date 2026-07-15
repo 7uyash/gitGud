@@ -109,7 +109,7 @@ function AppShell() {
           <Route path="/dashboard" element={<RequireAuth token={auth.token} user={auth.user}><DashboardPage user={auth.user} /></RequireAuth>} />
           <Route path="/lobbies/new" element={<RequireAuth token={auth.token} user={auth.user}><CreateLobbyPage /></RequireAuth>} />
           <Route path="/lobbies/:lobbyId" element={<RequireAuth token={auth.token} user={auth.user}><LobbyPage currentUserId={auth.user?.id ?? ''} /></RequireAuth>} />
-          <Route path="/matches/:matchId" element={<RequireAuth token={auth.token} user={auth.user}><MatchPage currentUserId={auth.user?.id ?? ''} /></RequireAuth>} />
+          <Route path="/matches/:matchId" element={<RequireAuth token={auth.token} user={auth.user}><MatchPage currentUser={auth.user} /></RequireAuth>} />
           <Route path="/test/diff" element={<DiffReview />} />
           <Route path="/test/meeting" element={<EmergencyMeeting />} />
           <Route path="/test/voting" element={<VotingResult />} />

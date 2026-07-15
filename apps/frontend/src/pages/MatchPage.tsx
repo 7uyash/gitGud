@@ -9,12 +9,14 @@ import { getMatch, submitTask } from '../api';
 import { getGameSocket } from '../socket';
 import { getToken } from '../auth';
 
-export function MatchPage({ currentUserId }: { currentUserId?: string }) {
+export function MatchPage({ currentUser }: { currentUser?: any }) {
   const { matchId } = useParams();
   const navigate = useNavigate();
   const [showRoleReveal, setShowRoleReveal] = useState(true);
   const [activeTab, setActiveTab] = useState('Feed.tsx');
-  
+  const [activeSidebarTab, setActiveSidebarTab] = useState('CHAT');
+  const [activeTerminalTab, setActiveTerminalTab] = useState('TERMINAL');
+
   const [matchState, setMatchState] = useState<any>(null);
   const [files, setFiles] = useState<Record<string, string>>({
     'Feed.tsx': `import { useEffect, useState } from "react";
@@ -39,7 +41,7 @@ export function Feed() {
 }`,
     'useAuth.ts': `export function useAuth() { return null; }`,
   });
-  
+
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [submittingTask, setSubmittingTask] = useState(false);
@@ -59,7 +61,7 @@ export function Feed() {
 
     const socket = getGameSocket();
     socket.connect();
-    
+
     socket.emit('match:join', { matchId, token: getToken() });
 
     const onEditorChange = (payload: any) => {
@@ -71,20 +73,27 @@ export function Feed() {
     };
 
     const onSubmissionReviewed = (payload: any) => {
-      // Just add a chat message or alert
-      setChatMessages(prev => [...prev, { username: 'system', text: `Task submitted by ${payload.userId} - Score: ${payload.review?.score ?? 0}`, isSystem: true }]);
+      setMatchState((currentMatchState: any) => {
+        const p = currentMatchState?.players?.find((x: any) => x.userId === payload.userId);
+        const submitterName = p?.username ?? (payload.userId === currentUser?.id ? currentUser?.username : payload.userId);
+        setChatMessages(prev => [...prev, { username: 'system', text: `Task submitted by @${submitterName} - Score: ${payload.review?.score ?? 0}`, isSystem: true }]);
+        return currentMatchState;
+      });
     };
 
     const onMeetingStarted = (payload: any) => {
       setActiveMeeting(payload);
       setVotingResult(null);
       setMatchState((currentMatchState: any) => {
-        setMeetingPlayers(Object.keys(currentMatchState?.match?.roleAssignments || {}).map(id => ({
-          id,
-          name: `@player_${id.substring(0,4)}`,
-          hasVoted: false,
-          votes: 0
-        })));
+        setMeetingPlayers(Object.keys(currentMatchState?.match?.roleAssignments || {}).map(id => {
+          const p = currentMatchState?.players?.find((x: any) => x.userId === id);
+          return {
+            id,
+            name: p?.username ? `@${p.username}` : `@player_${id.substring(0, 4)}`,
+            hasVoted: false,
+            votes: 0
+          };
+        }));
         return currentMatchState;
       });
     };
@@ -133,9 +142,8 @@ export function Feed() {
 
   const handleSendChat = () => {
     if (!chatInput.trim() || !matchId) return;
-    const msg = { matchId, username: currentUserId ?? 'guest', text: chatInput };
+    const msg = { matchId, username: currentUser?.username ?? 'guest', text: chatInput };
     getGameSocket().emit('chat:message', msg);
-    setChatMessages(prev => [...prev, msg]);
     setChatInput('');
   };
 
@@ -167,7 +175,7 @@ export function Feed() {
     return <div style={{ padding: '48px', textAlign: 'center' }}>Loading match...</div>;
   }
 
-  const role = matchState.match?.roleAssignments?.[currentUserId ?? ''] ?? 'CREWMATE';
+  const role = matchState.match?.roleAssignments?.[currentUser?.id ?? ''] ?? 'CREWMATE';
   const roleName = role.toUpperCase();
 
   if (recapPayload) {
@@ -175,12 +183,15 @@ export function Feed() {
       return <LearningRecap recapPayload={recapPayload} />;
     }
     return (
-      <GameOver 
-        recapPayload={recapPayload} 
-        players={Object.entries(matchState.match?.roleAssignments || {}).map(([id, r]) => ({
-          id, name: `@player_${id.substring(0,4)}`, role: (r as string).toUpperCase()
-        }))} 
-        onRecap={() => setShowRecap(true)} 
+      <GameOver
+        recapPayload={recapPayload}
+        players={Object.entries(matchState.match?.roleAssignments || {}).map(([id, r]) => {
+          const p = matchState.players?.find((x: any) => x.userId === id);
+          return {
+            id, name: p?.username ? `@${p.username}` : `@player_${id.substring(0, 4)}`, role: (r as string).toUpperCase()
+          };
+        })}
+        onRecap={() => setShowRecap(true)}
       />
     );
   }
@@ -188,41 +199,41 @@ export function Feed() {
   return (
     <>
       {showRoleReveal && <RoleReveal onComplete={() => setShowRoleReveal(false)} />}
-      
+
       {activeMeeting && (
-        <EmergencyMeeting 
+        <EmergencyMeeting
           meeting={activeMeeting}
           players={meetingPlayers}
-          myUserId={currentUserId ?? ''}
+          myUserId={currentUser?.id ?? ''}
           onVote={(targetId) => getGameSocket().emit('meeting:vote', { matchId, token: getToken(), targetUserId: targetId })}
         />
       )}
 
       {votingResult && (
-        <VotingResult 
+        <VotingResult
           result={votingResult}
           players={meetingPlayers}
           onClose={() => setVotingResult(null)}
         />
       )}
-      
+
       <div className="match-ide-container" style={{ display: 'grid', gridTemplateColumns: '260px 1fr 300px', gridTemplateRows: 'auto 1fr auto', gap: '16px', height: 'calc(100vh - 84px)' }}>
-        
+
         {/* Top Header Bar */}
         <div className="surface" style={{ gridColumn: '1 / -1', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
             <div style={{ fontWeight: 600 }}>GitGud <span className="muted" style={{ margin: '0 8px' }}>·</span> <span style={{ fontFamily: 'var(--font-sans)', fontSize: '0.9rem', color: 'var(--text-muted)' }}>REACT-REFACTOR-RUN</span></div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span className="kicker">SHIP READINESS · 62%</span>
-              <div className="tally-bar-bg" style={{ width: '200px', height: '8px' }}>
-                <div className="tally-bar-fill" style={{ width: '62%', background: 'var(--success-color)' }} />
+              <p className="kicker">SHIP READINESS · {matchState.match?.shipReadiness ?? 0}%</p>
+              <div style={{ height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ width: `${matchState.match?.shipReadiness ?? 0}%`, height: '100%', background: 'var(--accent-color)' }} />
               </div>
             </div>
           </div>
-          
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ border: '1px solid var(--border-color)', padding: '6px 12px', borderRadius: '4px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <span className="muted">⏱</span> <strong>08:42</strong>
+              <span className="muted">⏱</span> <strong>{String(Math.floor((matchState.match?.timerSecondsRemaining ?? 0) / 60)).padStart(2, '0')}:{String((matchState.match?.timerSecondsRemaining ?? 0) % 60).padStart(2, '0')}</strong>
             </div>
             <div style={{ border: '1px solid var(--border-color)', padding: '6px 12px', borderRadius: '4px', display: 'flex', gap: '8px', alignItems: 'center' }}>
               <span className="muted">👥</span> <strong>7</strong>
@@ -237,7 +248,7 @@ export function Feed() {
         </div>
 
         {/* Left Sidebar (Tasks & Explorer) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: 0 }}>
           <div className="surface" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
               <p className="kicker">MY TASKS · 3 OF 5</p>
@@ -254,7 +265,7 @@ export function Feed() {
                 <div className="muted" style={{ padding: '8px' }}>No tasks assigned.</div>
               )}
             </div>
-            
+
             <div style={{ padding: '16px', borderTop: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.02)' }}>
               <p className="kicker" style={{ marginBottom: '8px' }}>OBJECTIVES</p>
               <ul style={{ paddingLeft: '16px', margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -271,11 +282,11 @@ export function Feed() {
         </div>
 
         {/* Main Editor & Terminal */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: 0 }}>
+
           <div className="surface" style={{ flex: 1, padding: 0, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
             {/* Explorer Column */}
-            <div style={{ width: '200px', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ width: '260px', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
                 <p className="kicker">EXPLORER</p>
               </div>
@@ -308,8 +319,8 @@ export function Feed() {
               </div>
               {/* Code Content */}
               <div style={{ flex: 1, padding: '16px', overflowY: 'auto', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', lineHeight: 1.6, display: 'flex', background: '#1e1e1e' }}>
-                <textarea 
-                  value={files[activeTab] || ''} 
+                <textarea
+                  value={files[activeTab] || ''}
                   onChange={handleEditorChange}
                   style={{ width: '100%', height: '100%', minHeight: '300px', background: 'transparent', border: 'none', color: '#abb2bf', fontFamily: 'var(--font-mono)', outline: 'none', resize: 'none' }}
                   spellCheck={false}
@@ -322,7 +333,7 @@ export function Feed() {
           <div className="surface" style={{ height: '220px', padding: 0, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.2)' }}>
               {['TERMINAL', 'PROBLEMS (2)', 'OUTPUT', 'TESTS'].map(tab => (
-                <div key={tab} className={`editor-tab ${tab === 'TERMINAL' ? 'active' : ''}`} style={{ fontSize: '0.8rem', padding: '8px 16px' }}>
+                <div key={tab} className={`editor-tab ${tab === activeTerminalTab ? 'active' : ''}`} style={{ fontSize: '0.8rem', padding: '8px 16px', cursor: 'pointer' }} onClick={() => setActiveTerminalTab(tab)}>
                   {tab}
                 </div>
               ))}
@@ -351,51 +362,60 @@ export function Feed() {
         </div>
 
         {/* Right Sidebar (Chat & Players) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: 0 }}>
+
           <div className="surface" style={{ flex: 1, padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.2)' }}>
               {['CHAT', 'PLAYERS', 'ACTIVITY', 'ALERTS'].map(tab => (
-                <div key={tab} className={`editor-tab ${tab === 'CHAT' ? 'active' : ''}`} style={{ fontSize: '0.8rem', padding: '12px' }}>
+                <div key={tab} className={`editor-tab ${tab === activeSidebarTab ? 'active' : ''}`} style={{ fontSize: '0.8rem', padding: '12px', cursor: 'pointer' }} onClick={() => setActiveSidebarTab(tab)}>
                   {tab}
                 </div>
               ))}
             </div>
-            
+
             <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {chatMessages.map((msg, idx) => (
+              {activeSidebarTab === 'CHAT' && chatMessages.map((msg, idx) => (
                 <div key={idx} style={{ fontSize: '0.85rem', color: msg.isSystem ? 'var(--text-muted)' : 'inherit' }}>
                   {msg.isSystem ? (
                     `- system: ${msg.text}`
                   ) : (
                     <>
-                      <strong style={{ color: msg.username === currentUserId ? 'var(--accent-color)' : 'inherit' }}>@{msg.username}:</strong> {msg.text}
+                      <strong style={{ color: msg.username === currentUser?.username ? 'var(--accent-color)' : 'inherit' }}>@{msg.username}:</strong> {msg.text}
                     </>
                   )}
                 </div>
               ))}
+              {activeSidebarTab !== 'CHAT' && (
+                <div className="muted" style={{ textAlign: 'center', marginTop: '24px' }}>No content for {activeSidebarTab}</div>
+              )}
             </div>
           </div>
 
           <div className="surface" style={{ padding: '16px' }}>
-            <p className="kicker" style={{ marginBottom: '12px' }}>PLAYERS ONLINE · 7</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-              {['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'].map(p => (
-                <div key={p} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--border-color)', display: 'grid', placeItems: 'center', fontSize: '0.8rem' }}>{p}</div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{p}</span>
-                </div>
-              ))}
+            <p className="kicker" style={{ marginBottom: '12px' }}>PLAYERS ONLINE · {matchState.match?.roleAssignments ? Object.keys(matchState.match.roleAssignments).length : 0}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '160px' }}>
+              {Object.entries(matchState.match?.roleAssignments || {}).map(([id, role]) => {
+                const p = matchState.players?.find((x: any) => x.userId === id);
+                return (
+                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--border-color)', backgroundImage: p?.avatarUrl ? `url(${p.avatarUrl})` : undefined, backgroundSize: 'cover' }} />
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{p?.username ?? id.substring(0,4)}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{id === currentUser?.id ? 'You' : 'Crewmate'}</div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-            
+
             <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-              <input 
-                type="text" 
-                placeholder="Message team..." 
+              <input
+                type="text"
+                placeholder="Message team..."
                 value={chatInput}
                 onChange={e => setChatInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSendChat()}
-                style={{ margin: 0, flex: 1, padding: '8px' }} 
+                style={{ margin: 0, flex: 1, padding: '8px' }}
               />
               <button className="button ghost" style={{ padding: '8px' }} onClick={handleSendChat}>Send</button>
             </div>
@@ -412,8 +432,8 @@ export function Feed() {
           </div>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <span className="kicker">FILE: {activeTab.toUpperCase()}</span>
-            <button 
-              className="button dark" 
+            <button
+              className="button dark"
               style={{ background: 'var(--text-primary)', color: 'var(--bg-main)' }}
               onClick={handleSubmitTask}
               disabled={submittingTask}

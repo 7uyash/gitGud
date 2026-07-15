@@ -1,5 +1,7 @@
 import type { CommitReviewPayload, CommitSubmitPayload, GameRole, MatchInitializationPayload, MatchInitializationResponse, MatchStateDto, MeetingStartPayload, ReviewFeedback, TaskSubmissionPayload, TaskSubmissionResponse, VoteCastPayload } from '../contracts';
 import { GoogleGenAI, Type } from '@google/genai';
+import { db, users } from '@gitgud/database';
+import { inArray } from 'drizzle-orm';
 
 const ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
 
@@ -67,10 +69,19 @@ export class MatchesService {
     const result = await this.matchesRepository.getMatchResult(matchId);
     const tasks = await this.tasksRepository.listTasks(matchId);
 
+    let players: Array<{ userId: string; username: string }> = [];
+    if (match) {
+      const userIds = Object.keys(match.roleAssignments || {});
+      if (userIds.length > 0) {
+        players = (await db.select({ userId: users.id, username: users.username }).from(users).where(inArray(users.id, userIds)));
+      }
+    }
+
     const response: MatchStateDto = {
       match: match ? this.serializeMatch(match) : null,
       result: result ? this.serializeMatchResult(result) : null,
       tasks: tasks.map((task) => this.serializeTask(task)),
+      players,
     };
 
     return response;

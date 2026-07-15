@@ -114,6 +114,7 @@ export interface MatchStateDto {
     createdAt: string;
   } | null;
   tasks: MatchTaskDto[];
+  players?: Array<{ userId: string; username: string; avatarUrl?: string; displayName?: string }>;
 }
 
 export interface MatchInitializationPayload {

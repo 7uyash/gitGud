@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { getLobby, leaveLobby, setReady, startLobby } from '../api';
+import { getLobby, leaveLobby, setReady, startLobby, startMatch } from '../api';
 import { getGameSocket } from '../socket';
 
 export function LobbyPage({ currentUserId }: { currentUserId?: string }) {
@@ -41,7 +41,9 @@ export function LobbyPage({ currentUserId }: { currentUserId?: string }) {
     
     // Also listen for match:started so everyone navigates to the game
     const onMatchStarted = (payload: any) => {
-      navigate(`/match/${payload.matchId}`);
+      if (payload?.match?.id) {
+        navigate(`/matches/${payload.match.id}`);
+      }
     };
 
     socket.on('lobby:changed', onLobbyChanged);
@@ -72,12 +74,8 @@ export function LobbyPage({ currentUserId }: { currentUserId?: string }) {
     if (!lobbyId) return;
     try {
       const payload = await startLobby(lobbyId);
-      // Let the engine broadcast to the room, or we can just navigate.
-      // Wait, startLobby is in auth-lobby-service, it creates the DB entry but the engine needs to start.
-      // Actually, let's just trigger startLobby and then the backend or socket might tell everyone.
-      // Let's assume startLobby API sets status='starting'. We need to also broadcast so others know.
-      // Wait, if it sets status='starting', the engine polls or we can just manually navigate.
-      navigate(`/match/${lobbyId}`);
+      const matchRes = await startMatch(payload);
+      navigate(`/matches/${matchRes.match.id}`);
       notifyChange(); // notify others if needed, but match:started should be used.
     } catch (e) {
       alert('Failed to start game: ' + (e instanceof Error ? e.message : String(e)));
@@ -94,7 +92,7 @@ export function LobbyPage({ currentUserId }: { currentUserId?: string }) {
   const isReady = currentPlayer?.isReady ?? false;
   const readyCount = players.filter((p: any) => p.isReady).length;
   const totalPlayers = players.length;
-  const allReady = readyCount === totalPlayers && totalPlayers >= 2;
+  const allReady = readyCount === totalPlayers && totalPlayers >= 1;
 
   // Render dummy slots
   const emptySlots = Math.max(0, lobby.maxPlayers - players.length);

@@ -61,7 +61,7 @@ export class LobbiesService {
     }
 
     const players = await this.lobbiesRepository.listLobbyPlayers(lobbyId);
-    if (players.length < 2) {
+    if (players.length < 1) {
       throw new Error('At least two players are required to start a match.');
     }
 
