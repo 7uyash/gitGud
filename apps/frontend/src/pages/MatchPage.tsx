@@ -52,6 +52,22 @@ export function Feed() {
   const [showRecap, setShowRecap] = useState(false);
 
   useEffect(() => {
+    const timer = setInterval(() => {
+      setMatchState((prev: any) => {
+        if (!prev?.match || prev.match.timerSecondsRemaining <= 0) return prev;
+        return {
+          ...prev,
+          match: {
+            ...prev.match,
+            timerSecondsRemaining: prev.match.timerSecondsRemaining - 1
+          }
+        };
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     if (!matchId) return;
 
     let mounted = true;
@@ -217,7 +233,7 @@ export function Feed() {
         />
       )}
 
-      <div className="match-ide-container" style={{ display: 'grid', gridTemplateColumns: '260px 1fr 300px', gridTemplateRows: 'auto 1fr auto', gap: '16px', height: 'calc(100vh - 84px)' }}>
+      <div className="match-ide-container" style={{ display: 'grid', gridTemplateColumns: '220px 1fr 300px', gridTemplateRows: 'auto 1fr auto', gap: '16px', height: 'calc(100vh - 84px)' }}>
 
         {/* Top Header Bar */}
         <div className="surface" style={{ gridColumn: '1 / -1', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -286,24 +302,28 @@ export function Feed() {
 
           <div className="surface" style={{ flex: 1, padding: 0, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
             {/* Explorer Column */}
-            <div style={{ width: '260px', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ width: '180px', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
               <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
                 <p className="kicker">EXPLORER</p>
               </div>
-              <div className="file-tree" style={{ padding: '8px 0', fontSize: '0.9rem', overflowY: 'auto' }}>
-                <div className="ft-folder">▾ src</div>
-                <div className="ft-folder" style={{ paddingLeft: '24px' }}>▸ components</div>
-                <div className="ft-file" style={{ paddingLeft: '24px' }}>Header.tsx</div>
-                <div className="ft-file active" style={{ paddingLeft: '24px' }}>Feed.tsx *</div>
-                <div className="ft-file" style={{ paddingLeft: '24px' }}>PostCard.tsx</div>
-                <div className="ft-folder" style={{ paddingLeft: '24px' }}>▸ hooks</div>
-                <div className="ft-file" style={{ paddingLeft: '24px' }}>useAuth.ts</div>
-                <div className="ft-folder" style={{ paddingLeft: '24px' }}>▾ api</div>
-                <div className="ft-file" style={{ paddingLeft: '40px' }}>posts.ts</div>
-                <div className="ft-file" style={{ paddingLeft: '24px' }}>App.tsx</div>
-                <div className="ft-folder" style={{ paddingLeft: '24px' }}>▸ tests</div>
-                <div className="ft-file" style={{ paddingLeft: '8px', marginTop: '8px' }}>package.json</div>
-                <div className="ft-file" style={{ paddingLeft: '8px' }}>README.md</div>
+              <div className="file-tree" style={{ padding: '4px 0', fontSize: '0.8rem', overflowY: 'auto' }}>
+                <div style={{ padding: '2px 16px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>▾ <strong>src</strong></div>
+                <div style={{ padding: '2px 16px', paddingLeft: '28px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>▸ components</div>
+                <div style={{ padding: '2px 16px', paddingLeft: '44px', color: 'var(--text-muted)' }}>Header.tsx</div>
+                <div style={{ padding: '2px 16px', paddingLeft: '44px', color: 'var(--text-primary)', fontWeight: 'bold' }}>Feed.tsx *</div>
+                <div style={{ padding: '2px 16px', paddingLeft: '44px', color: 'var(--text-muted)' }}>PostCard.tsx</div>
+                
+                <div style={{ padding: '2px 16px', paddingLeft: '28px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', marginTop: '4px' }}>▸ hooks</div>
+                <div style={{ padding: '2px 16px', paddingLeft: '44px', color: 'var(--text-muted)' }}>useAuth.ts</div>
+                
+                <div style={{ padding: '2px 16px', paddingLeft: '28px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', marginTop: '4px' }}>▾ api</div>
+                <div style={{ padding: '2px 16px', paddingLeft: '44px', color: 'var(--text-muted)' }}>posts.ts</div>
+                
+                <div style={{ padding: '2px 16px', paddingLeft: '28px', color: 'var(--text-muted)' }}>App.tsx</div>
+                
+                <div style={{ padding: '2px 16px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', marginTop: '4px' }}>▸ <strong>tests</strong></div>
+                <div style={{ padding: '2px 16px', color: 'var(--text-muted)', marginTop: '2px' }}>package.json</div>
+                <div style={{ padding: '2px 16px', color: 'var(--text-muted)', marginTop: '2px' }}>README.md</div>
               </div>
             </div>
 
@@ -329,8 +349,8 @@ export function Feed() {
             </div>
           </div>
 
-          {/* Terminal / Actions Bar */}
-          <div className="surface" style={{ height: '220px', padding: 0, display: 'flex', flexDirection: 'column' }}>
+          {/* Terminal / Output Area */}
+          <div className="surface" style={{ height: '180px', padding: 0, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
             <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.2)' }}>
               {['TERMINAL', 'PROBLEMS (2)', 'OUTPUT', 'TESTS'].map(tab => (
                 <div key={tab} className={`editor-tab ${tab === activeTerminalTab ? 'active' : ''}`} style={{ fontSize: '0.8rem', padding: '8px 16px', cursor: 'pointer' }} onClick={() => setActiveTerminalTab(tab)}>
