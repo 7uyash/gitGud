@@ -1,1 +1,1 @@
-ALTER TABLE tasks ADD COLUMN expected_solution TEXT;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS expected_solution TEXT;
