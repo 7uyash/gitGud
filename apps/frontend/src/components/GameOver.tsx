@@ -1,19 +1,16 @@
 import React from 'react';
 
-export function GameOver({ onRecap }: { onRecap?: () => void }) {
-  const crewmates = [
-    { name: '@octoplayer', role: 'CREWMATE' },
-    { name: '@debugbird', role: 'CREWMATE' },
-    { name: '@mergequeen', role: 'CREWMATE' },
-    { name: '@semver_sam', role: 'CREWMATE' },
-    { name: '@async_ana', role: 'CREWMATE' },
-    { name: '@byte_bea', role: 'CREWMATE' },
-  ];
-
-  const imposters = [
-    { name: '@null_ninja', role: 'IMPOSTER' },
-    { name: '@hex_wizard', role: 'IMPOSTER' },
-  ];
+export function GameOver({ 
+  recapPayload,
+  players,
+  onRecap 
+}: { 
+  recapPayload: any;
+  players: any[];
+  onRecap?: () => void;
+}) {
+  const crewmates = players.filter(p => p.role !== 'IMPOSTER');
+  const imposters = players.filter(p => p.role === 'IMPOSTER');
 
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
@@ -21,8 +18,8 @@ export function GameOver({ onRecap }: { onRecap?: () => void }) {
         
         <div className="match-result-banner">
           <p className="kicker" style={{ marginBottom: '16px' }}>Match Result</p>
-          <h1>CREWMATES WIN</h1>
-          <p style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>All imposters were identified before the timer expired.</p>
+          <h1>{recapPayload?.winnerTeam === 'CREW' ? 'CREWMATES WIN' : 'IMPOSTERS WIN'}</h1>
+          <p style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>{recapPayload?.endingReason}</p>
         </div>
 
         <div className="team-grid">
@@ -90,7 +87,7 @@ export function GameOver({ onRecap }: { onRecap?: () => void }) {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
-          <button className="button ghost">← Return to dashboard</button>
+          <button className="button ghost" onClick={() => window.location.assign('/dashboard')}>← Return to dashboard</button>
           <div style={{ display: 'flex', gap: '16px' }}>
             <button className="button ghost">Rematch</button>
             <button className="button dark" onClick={onRecap}>View learning recap →</button>

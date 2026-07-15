@@ -171,6 +171,25 @@ export function registerGameSockets(io: Server) {
         socket.emit('match:error', { message: 'Failed to cast vote.' });
       }
     });
+
+    socket.on('match:end', (payload: { matchId: string; token: string; winnerTeam: 'CREW' | 'IMPOSTERS' }) => {
+      try {
+        verifyGameToken(payload.token);
+        const { matchId, winnerTeam } = payload;
+        
+        const recapPayload = {
+          matchId,
+          winnerTeam,
+          endingReason: winnerTeam === 'CREW' ? 'All imposters identified' : 'Imposters outlived the crew',
+          summary: 'The match has concluded.',
+          learningRecap: 'Great job finding the bugs. Some areas to improve: Always check for null values before rendering.',
+        };
+
+        io.to(matchRoom(matchId)).emit('match:ended', recapPayload);
+      } catch (error) {
+        socket.emit('match:error', { message: 'Failed to end match.' });
+      }
+    });
   });
 }
 

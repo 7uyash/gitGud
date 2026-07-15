@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { RoleReveal } from '../components/RoleReveal';
 import { EmergencyMeeting } from '../components/EmergencyMeeting';
 import { VotingResult } from '../components/VotingResult';
+import { GameOver } from '../components/GameOver';
+import { LearningRecap } from '../components/LearningRecap';
 import { getMatch, submitTask } from '../api';
 import { getGameSocket } from '../socket';
 import { getToken } from '../auth';
@@ -44,6 +46,8 @@ export function Feed() {
   const [activeMeeting, setActiveMeeting] = useState<any>(null);
   const [votingResult, setVotingResult] = useState<any>(null);
   const [meetingPlayers, setMeetingPlayers] = useState<any[]>([]);
+  const [recapPayload, setRecapPayload] = useState<any>(null);
+  const [showRecap, setShowRecap] = useState(false);
 
   useEffect(() => {
     if (!matchId) return;
@@ -94,12 +98,17 @@ export function Feed() {
       setVotingResult(payload);
     };
 
+    const onMatchEnded = (payload: any) => {
+      setRecapPayload(payload);
+    };
+
     socket.on('editor:change', onEditorChange);
     socket.on('chat:message', onChatMessage);
     socket.on('submission:reviewed', onSubmissionReviewed);
     socket.on('meeting:started', onMeetingStarted);
     socket.on('meeting:voted', onMeetingVoted);
     socket.on('meeting:ended', onMeetingEnded);
+    socket.on('match:ended', onMatchEnded);
 
     return () => {
       mounted = false;
@@ -109,6 +118,7 @@ export function Feed() {
       socket.off('meeting:started', onMeetingStarted);
       socket.off('meeting:voted', onMeetingVoted);
       socket.off('meeting:ended', onMeetingEnded);
+      socket.off('match:ended', onMatchEnded);
       socket.emit('match:leave', { matchId });
     };
   }, [matchId]);
@@ -148,12 +158,32 @@ export function Feed() {
     getGameSocket().emit('meeting:called', { matchId, token: getToken(), reason });
   };
 
+  const handleEndMatch = () => {
+    if (!matchId) return;
+    getGameSocket().emit('match:end', { matchId, token: getToken(), winnerTeam: 'CREW' });
+  };
+
   if (!matchState) {
     return <div style={{ padding: '48px', textAlign: 'center' }}>Loading match...</div>;
   }
 
   const role = matchState.match?.roleAssignments?.[currentUserId ?? ''] ?? 'CREWMATE';
   const roleName = role.toUpperCase();
+
+  if (recapPayload) {
+    if (showRecap) {
+      return <LearningRecap recapPayload={recapPayload} />;
+    }
+    return (
+      <GameOver 
+        recapPayload={recapPayload} 
+        players={Object.entries(matchState.match?.roleAssignments || {}).map(([id, r]) => ({
+          id, name: `@player_${id.substring(0,4)}`, role: (r as string).toUpperCase()
+        }))} 
+        onRecap={() => setShowRecap(true)} 
+      />
+    );
+  }
 
   return (
     <>
@@ -201,7 +231,7 @@ export function Feed() {
               <span className="muted">Role:</span>
               <div style={{ background: roleName === 'IMPOSTER' ? 'var(--danger-color)' : 'var(--text-primary)', color: 'var(--bg-main)', padding: '2px 8px', borderRadius: '2px', fontSize: '0.8rem', fontWeight: 600 }}>{roleName}</div>
             </div>
-            <button className="button ghost">Settings</button>
+            <button className="button ghost" onClick={handleEndMatch}>End Game (Dev)</button>
             <button className="button ghost" onClick={() => navigate('/dashboard')}>Leave</button>
           </div>
         </div>

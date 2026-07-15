@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function LearningRecap() {
+export function LearningRecap({ recapPayload }: { recapPayload: any }) {
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
       <div className="surface" style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -119,7 +119,7 @@ export function LearningRecap() {
               <div style={{ opacity: 0.5 }}>  return res.json();</div>
             </div>
             <p style={{ marginTop: '16px', color: 'var(--text-muted)' }}>
-              Silently returning <code style={{ color: 'var(--text-primary)' }}>[]</code> on a failed response hides errors from the UI and looks like a valid empty list. Prefer surfacing the error or throwing, so error boundaries or tests can catch it.
+              {recapPayload?.learningRecap}
             </p>
             <div className="kicker" style={{ marginTop: '16px' }}>
               CONCEPT: ERROR PROPAGATION · DEFENSIVE VS SILENT FAILURE · FETCH RESPONSE HANDLING
@@ -141,7 +141,7 @@ export function LearningRecap() {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px' }}>
-        <button className="button ghost">← Return to dashboard</button>
+        <button className="button ghost" onClick={() => window.location.assign('/dashboard')}>← Return to dashboard</button>
         <div className="muted" style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--border-color)', display: 'grid', placeItems: 'center' }}>P1</div>
           RECAP GENERATED FOR @OCTOPLAYER
