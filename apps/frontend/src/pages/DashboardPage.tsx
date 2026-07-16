@@ -37,7 +37,7 @@ export function DashboardPage({ user }: DashboardPageProps) {
   const [lobbies, setLobbies] = useState<any[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ winRate: 0, totalMatches: 0, crewWins: 0 });
+  const [stats, setStats] = useState({ winRate: 0, totalMatches: 0, finishedCount: 0 });
   const [roomCode, setRoomCode] = useState('');
 
   useEffect(() => {
@@ -53,14 +53,10 @@ export function DashboardPage({ user }: DashboardPageProps) {
         const role = (m.roleAssignments as Record<string, string>)?.[user?.id ?? ''];
         return role && m.winnerTeam === role;
       }).length;
-      const crewWins = fetchedMatches.filter((m: any) => {
-        const role = (m.roleAssignments as Record<string, string>)?.[user?.id ?? ''];
-        return role === 'crew' && m.winnerTeam === 'crew';
-      }).length;
       setStats({
         winRate: finished.length > 0 ? Math.round((wins / finished.length) * 100) : 0,
         totalMatches: fetchedMatches.length,
-        crewWins,
+        finishedCount: finished.length,
       });
 
       setLoading(false);
@@ -89,9 +85,10 @@ export function DashboardPage({ user }: DashboardPageProps) {
   const rankInfo = getRankInfo(stats.totalMatches);
   const xpFillPct = Math.min(100, Math.round((rankInfo.xp / rankInfo.xpNext) * 100));
 
-  const winRateColor = stats.totalMatches === 0
+  const winRateColor = stats.finishedCount === 0
     ? 'var(--border-color)'
     : stats.winRate >= 50 ? 'var(--success-color)' : 'var(--danger-color)';
+  const winRateDisplay = loading ? '—' : stats.finishedCount === 0 ? '—' : `${stats.winRate}%`;
 
   return (
     <div className="dashboard-grid">
@@ -194,15 +191,11 @@ export function DashboardPage({ user }: DashboardPageProps) {
         <div className="mini-grid compact">
           <div className="surface stat" style={{ alignItems: 'flex-start', padding: '16px 24px', borderLeft: `3px solid ${winRateColor}` }}>
             <span className="kicker">Win Rate</span>
-            <span className="stat-value" style={{ marginTop: '8px', color: winRateColor }}>{loading ? '—' : `${stats.winRate}%`}</span>
+            <span className="stat-value" style={{ marginTop: '8px', color: winRateColor }}>{winRateDisplay}</span>
           </div>
           <div className="surface stat" style={{ alignItems: 'flex-start', padding: '16px 24px', borderLeft: '3px solid var(--accent-color)' }}>
             <span className="kicker">Matches Played</span>
             <span className="stat-value" style={{ marginTop: '8px' }}>{loading ? '—' : stats.totalMatches}</span>
-          </div>
-          <div className="surface stat" style={{ alignItems: 'flex-start', padding: '16px 24px', borderLeft: '3px solid var(--success-color)' }}>
-            <span className="kicker">Crew Wins</span>
-            <span className="stat-value" style={{ marginTop: '8px' }}>{loading ? '—' : stats.crewWins}</span>
           </div>
           <div className="surface stat" style={{ alignItems: 'flex-start', padding: '16px 24px', borderLeft: '3px solid var(--accent-color)' }}>
             <span className="kicker">Public Rooms</span>
