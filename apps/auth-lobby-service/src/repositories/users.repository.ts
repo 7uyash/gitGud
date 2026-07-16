@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 
-import { db, users } from '@gitgud/database';
+import { db, lobbyPlayers, matchResults, matches, users } from '@gitgud/database';
 import type { GitHubProfile } from '../contracts';
 
 export class UsersRepository {
@@ -32,11 +32,21 @@ export class UsersRepository {
   }
 
   async listRecentMatches(userId: string) {
-    // We join matchResults, matches, and lobbyPlayers to find matches this user was in
-    // This is a simplified query just to return the recent matches for the dashboard.
-    // In Drizzle we can query matchResults, inner join matches on match_id, inner join lobby_players on lobby_id
-    // But since lobbyPlayers doesn't strictly persist if deleted? No, lobbyPlayers persists.
-    return []; // For now, let's return an empty array until we have full match data structure, or we can write the drizzle query.
+    return db
+      .select({
+        id: matches.id,
+        status: matches.status,
+        startedAt: matches.startedAt,
+        roleAssignments: matches.roleAssignments,
+        winnerTeam: matchResults.winnerTeam,
+        endingReason: matchResults.endingReason,
+        createdAt: matches.createdAt,
+      })
+      .from(matches)
+      .innerJoin(lobbyPlayers, and(eq(lobbyPlayers.lobbyId, matches.lobbyId), eq(lobbyPlayers.userId, userId)))
+      .leftJoin(matchResults, eq(matchResults.matchId, matches.id))
+      .orderBy(desc(matches.createdAt))
+      .limit(10);
   }
 
   async findByGitHubId(githubId: string) {

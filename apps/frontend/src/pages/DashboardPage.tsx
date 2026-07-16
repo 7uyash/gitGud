@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { listPublicLobbies, getMyMatches, joinLobby } from '../api';
+import { listPublicLobbies, getMyMatches, joinLobby, joinLobbyByCode } from '../api';
 import type { CurrentUser } from '../App';
 
 interface DashboardPageProps {
@@ -13,6 +13,7 @@ export function DashboardPage({ user }: DashboardPageProps) {
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ winRate: 0, totalMatches: 0, bugsFound: 0 });
+  const [roomCode, setRoomCode] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -47,6 +48,16 @@ export function DashboardPage({ user }: DashboardPageProps) {
       navigate(`/lobbies/${lobbyId}`);
     } catch (e) {
       alert('Failed to join lobby');
+    }
+  };
+
+  const handleJoinByCode = async () => {
+    if (!roomCode.trim()) return;
+    try {
+      const result = await joinLobbyByCode(roomCode.trim());
+      navigate(`/lobbies/${result.lobby.id}`);
+    } catch (e: any) {
+      alert(e?.message ?? 'Invalid room code');
     }
   };
   return (
@@ -115,8 +126,15 @@ export function DashboardPage({ user }: DashboardPageProps) {
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <Link to="/lobbies/new" className="button dark">+ Create Lobby</Link>
               <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
-                <input type="text" placeholder="ROOM CODE" style={{ margin: 0, flex: 1 }} />
-                <button className="button ghost">Join</button>
+                <input
+                  type="text"
+                  placeholder="ROOM CODE"
+                  value={roomCode}
+                  onChange={e => setRoomCode(e.target.value.toUpperCase())}
+                  onKeyDown={e => e.key === 'Enter' && handleJoinByCode()}
+                  style={{ margin: 0, flex: 1 }}
+                />
+                <button className="button ghost" onClick={handleJoinByCode} disabled={!roomCode.trim()}>Join</button>
               </div>
               <button className="button ghost">Quick match</button>
             </div>

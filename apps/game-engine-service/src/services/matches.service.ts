@@ -78,7 +78,7 @@ export class MatchesService {
     return response;
   }
 
-  async getMatch(matchId: string) {
+  async getMatch(matchId: string, userId?: string) {
     const match = await this.matchesRepository.getMatch(matchId);
     const result = await this.matchesRepository.getMatchResult(matchId);
     const tasks = await this.tasksRepository.listTasks(matchId);
@@ -91,14 +91,25 @@ export class MatchesService {
       }
     }
 
+    let myTaskId: string | undefined;
+    if (userId) {
+      const assignment = await this.matchesRepository.getAssignedTaskForUser(matchId, userId);
+      myTaskId = assignment?.taskId;
+    }
+
     const response: MatchStateDto = {
       match: match ? this.serializeMatch(match) : null,
       result: result ? this.serializeMatchResult(result) : null,
       tasks: tasks.map((task) => this.serializeTask(task)),
       players,
+      myTaskId,
     };
 
     return response;
+  }
+
+  async getCommits(matchId: string) {
+    return this.gameplayRepository.listCommits(matchId);
   }
 
   async submitCommit(payload: CommitSubmitPayload) {

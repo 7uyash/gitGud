@@ -115,13 +115,7 @@ export interface MatchStateDto {
   } | null;
   tasks: MatchTaskDto[];
   players?: Array<{ userId: string; username: string; avatarUrl?: string; displayName?: string }>;
-}
-
-export interface MatchInitializationPayload {
-  matchId: string;
-  lobbyId: string;
-  players: MatchPlayerRole[];
-  timerSeconds: number;
+  myTaskId?: string;
 }
 
 export interface MatchInitializationResponse {

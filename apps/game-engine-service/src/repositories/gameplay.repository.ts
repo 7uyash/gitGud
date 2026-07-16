@@ -18,6 +18,10 @@ export class GameplayRepository {
     return record;
   }
 
+  async listCommits(matchId: string) {
+    return db.select().from(commits).where(eq(commits.matchId, matchId)).orderBy(commits.createdAt);
+  }
+
   async updateCommitReview(commitId: string, reviewStatus: 'pending' | 'approved' | 'rejected') {
     const [record] = await db.update(commits).set({ reviewStatus }).where(eq(commits.id, commitId)).returning();
     return record ?? null;
