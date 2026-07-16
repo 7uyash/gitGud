@@ -50,6 +50,10 @@ export function Feed() {
   const [meetingPlayers, setMeetingPlayers] = useState<any[]>([]);
   const [recapPayload, setRecapPayload] = useState<any>(null);
   const [showRecap, setShowRecap] = useState(false);
+  const [meetingsLeft, setMeetingsLeft] = useState(2);
+  const [terminalLines, setTerminalLines] = useState<Array<{ text: string; type: 'info' | 'success' | 'error' | 'cmd' }>>([
+    { text: '$ awaiting task submission...', type: 'cmd' },
+  ]);
 
   // Timer is driven by server match:tick events — no independent client countdown.
 
@@ -81,6 +85,13 @@ export function Feed() {
         setChatMessages(prev => [...prev, { username: 'system', text: `Task submitted by @${submitterName} - Score: ${payload.review?.score ?? 0}`, isSystem: true }]);
         return currentMatchState;
       });
+      const passed = payload.review?.status === 'PASS';
+      setTerminalLines(prev => [
+        ...prev,
+        { text: `$ git push origin task-submission`, type: 'cmd' },
+        { text: `${passed ? '✓' : '✕'} Review: ${payload.review?.feedback ?? 'No feedback'}`, type: passed ? 'success' : 'error' },
+        { text: `  Score: ${payload.review?.score ?? 0}/100`, type: 'info' },
+      ]);
     };
 
     const onMeetingStarted = (payload: any) => {
@@ -178,10 +189,11 @@ export function Feed() {
   };
 
   const handleCallMeeting = () => {
-    if (!matchId) return;
+    if (!matchId || meetingsLeft <= 0) return;
     const reason = prompt('Why are you calling this meeting?');
     if (!reason) return;
     getGameSocket().emit('meeting:called', { matchId, token: getToken(), reason });
+    setMeetingsLeft(prev => prev - 1);
   };
 
   const handleEndMatch = () => {
@@ -256,7 +268,7 @@ export function Feed() {
               <span className="muted">⏱</span> <strong>{String(Math.floor((matchState.match?.timerSecondsRemaining ?? 0) / 60)).padStart(2, '0')}:{String((matchState.match?.timerSecondsRemaining ?? 0) % 60).padStart(2, '0')}</strong>
             </div>
             <div style={{ border: '1px solid var(--border-color)', padding: '6px 12px', borderRadius: '4px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <span className="muted">👥</span> <strong>7</strong>
+              <span className="muted">👥</span> <strong>{Object.keys(matchState.match?.roleAssignments || {}).length}</strong>
             </div>
             <div style={{ border: '1px solid var(--border-color)', padding: '6px 12px', borderRadius: '4px', display: 'flex', gap: '8px', alignItems: 'center' }}>
               <span className="muted">Role:</span>
@@ -295,9 +307,9 @@ export function Feed() {
             </div>
           </div>
 
-          <button className="button danger" style={{ width: '100%', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }} onClick={handleCallMeeting} disabled={!!activeMeeting || !!votingResult}>
+          <button className="button danger" style={{ width: '100%', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }} onClick={handleCallMeeting} disabled={!!activeMeeting || !!votingResult || meetingsLeft <= 0}>
             <strong style={{ fontSize: '1.1rem' }}>🚨 Emergency Meeting</strong>
-            <span style={{ fontSize: '0.8rem' }}>2 LEFT</span>
+            <span style={{ fontSize: '0.8rem' }}>{meetingsLeft > 0 ? `${meetingsLeft} LEFT` : 'USED UP'}</span>
           </button>
         </div>
 
@@ -362,11 +374,13 @@ export function Feed() {
                 </div>
               ))}
             </div>
-            <div style={{ flex: 1, padding: '12px', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', overflowY: 'auto' }}>
-              <div style={{ color: 'var(--accent-color)' }}>$ npm test</div>
-              <div style={{ color: 'var(--success-color)' }}>✓ Header renders</div>
-              <div style={{ color: 'var(--danger-color)' }}>✕ Feed pagination appends (expected 20, got 10)</div>
-              <div style={{ color: 'var(--accent-color)', marginTop: '8px' }}>$ <span style={{ animation: 'pulse 1s infinite' }}>_</span></div>
+            <div style={{ flex: 1, padding: '12px', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {terminalLines.map((line, i) => (
+                <div key={i} style={{ color: line.type === 'cmd' ? 'var(--accent-color)' : line.type === 'success' ? 'var(--success-color)' : line.type === 'error' ? 'var(--danger-color)' : 'var(--text-muted)' }}>
+                  {line.text}
+                </div>
+              ))}
+              <div style={{ color: 'var(--accent-color)' }}>$ <span>_</span></div>
             </div>
             {/*
             <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -409,8 +423,28 @@ export function Feed() {
                   )}
                 </div>
               ))}
-              {activeSidebarTab !== 'CHAT' && (
-                <div className="muted" style={{ textAlign: 'center', marginTop: '24px' }}>No content for {activeSidebarTab}</div>
+              {activeSidebarTab === 'PLAYERS' && Object.entries(matchState.match?.roleAssignments || {}).map(([id]) => {
+                const p = matchState.players?.find((x: any) => x.userId === id);
+                const isMe = id === currentUser?.id;
+                return (
+                  <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success-color)', flexShrink: 0 }} />
+                    <span style={{ fontWeight: isMe ? 600 : 400, color: isMe ? 'var(--accent-color)' : 'inherit' }}>
+                      @{p?.username ?? id.substring(0, 6)}{isMe ? ' (you)' : ''}
+                    </span>
+                  </div>
+                );
+              })}
+              {activeSidebarTab === 'ACTIVITY' && (
+                <div className="muted" style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {chatMessages.filter((m: any) => m.isSystem).map((m: any, i: number) => (
+                    <div key={i}>— {m.text}</div>
+                  ))}
+                  {chatMessages.filter((m: any) => m.isSystem).length === 0 && <div>No activity yet.</div>}
+                </div>
+              )}
+              {activeSidebarTab === 'ALERTS' && (
+                <div className="muted" style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.85rem' }}>No alerts.</div>
               )}
             </div>
           </div>

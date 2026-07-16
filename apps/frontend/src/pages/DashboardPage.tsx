@@ -12,6 +12,7 @@ export function DashboardPage({ user }: DashboardPageProps) {
   const [lobbies, setLobbies] = useState<any[]>([]);
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ winRate: 0, totalMatches: 0, bugsFound: 0 });
 
   useEffect(() => {
     Promise.all([
@@ -20,6 +21,22 @@ export function DashboardPage({ user }: DashboardPageProps) {
     ]).then(([fetchedLobbies, fetchedMatches]) => {
       setLobbies(fetchedLobbies);
       setMatches(fetchedMatches);
+
+      const finished = fetchedMatches.filter((m: any) => m.winnerTeam);
+      const wins = finished.filter((m: any) => {
+        const role = (m.roleAssignments as Record<string, string>)?.[user?.id ?? ''];
+        return role && m.winnerTeam === role;
+      }).length;
+      const bugsFound = fetchedMatches.reduce((acc: number, m: any) => {
+        const role = (m.roleAssignments as Record<string, string>)?.[user?.id ?? ''];
+        return acc + (role === 'crew' && m.winnerTeam === 'crew' ? 1 : 0);
+      }, 0);
+      setStats({
+        winRate: finished.length > 0 ? Math.round((wins / finished.length) * 100) : 0,
+        totalMatches: fetchedMatches.length,
+        bugsFound,
+      });
+
       setLoading(false);
     });
   }, []);
@@ -121,19 +138,19 @@ export function DashboardPage({ user }: DashboardPageProps) {
         <div className="mini-grid compact">
           <div className="surface stat" style={{ alignItems: 'flex-start', padding: '16px 24px' }}>
             <span className="kicker">Win Rate</span>
-            <span className="stat-value" style={{ marginTop: '8px' }}>62%</span>
+            <span className="stat-value" style={{ marginTop: '8px' }}>{loading ? '—' : `${stats.winRate}%`}</span>
           </div>
           <div className="surface stat" style={{ alignItems: 'flex-start', padding: '16px 24px' }}>
-            <span className="kicker">Bugs Found</span>
-            <span className="stat-value" style={{ marginTop: '8px' }}>48</span>
+            <span className="kicker">Matches Played</span>
+            <span className="stat-value" style={{ marginTop: '8px' }}>{loading ? '—' : stats.totalMatches}</span>
           </div>
           <div className="surface stat" style={{ alignItems: 'flex-start', padding: '16px 24px' }}>
-            <span className="kicker">Bugs Shipped (As Imposter)</span>
-            <span className="stat-value" style={{ marginTop: '8px' }}>12</span>
+            <span className="kicker">Crew Wins</span>
+            <span className="stat-value" style={{ marginTop: '8px' }}>{loading ? '—' : stats.bugsFound}</span>
           </div>
           <div className="surface stat" style={{ alignItems: 'flex-start', padding: '16px 24px' }}>
-            <span className="kicker">Avg Score</span>
-            <span className="stat-value" style={{ marginTop: '8px' }}>820</span>
+            <span className="kicker">Public Rooms</span>
+            <span className="stat-value" style={{ marginTop: '8px' }}>{loading ? '—' : lobbies.length}</span>
           </div>
         </div>
 
