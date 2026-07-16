@@ -117,8 +117,10 @@ export function registerGameSockets(io: Server) {
       socket.leave(`lobby:${lobbyId}`);
     });
 
-    socket.on('lobby:changed', (lobbyId: string) => {
-      socket.to(`lobby:${lobbyId}`).emit('lobby:changed');
+    socket.on('lobby:changed', (data: string | { lobbyId: string; matchId?: string }) => {
+      const lobbyId = typeof data === 'string' ? data : data.lobbyId;
+      const matchId = typeof data === 'string' ? undefined : data.matchId;
+      socket.to(`lobby:${lobbyId}`).emit('lobby:changed', matchId ? { matchId } : undefined);
     });
 
     socket.on('lobby:chat', (payload: { lobbyId: string; username: string; text: string }) => {

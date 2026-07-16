@@ -23,9 +23,9 @@ export function LobbyPage({ currentUserId, currentUsername }: { currentUserId?: 
     }
   };
 
-  const notifyChange = () => {
+  const notifyChange = (matchId?: string) => {
     if (lobbyId) {
-      getGameSocket().emit('lobby:changed', lobbyId);
+      getGameSocket().emit('lobby:changed', { lobbyId, matchId });
     }
   };
 
@@ -36,10 +36,19 @@ export function LobbyPage({ currentUserId, currentUsername }: { currentUserId?: 
     socket.connect();
     socket.emit('lobby:watch', lobbyId);
 
-    const onLobbyChanged = () => {
+    // Re-join lobby room after any reconnect (server drops room memberships on disconnect)
+    const onConnect = () => {
+      socket.emit('lobby:watch', lobbyId);
+    };
+
+    const onLobbyChanged = (data?: { matchId?: string }) => {
+      if (data?.matchId) {
+        navigate(`/matches/${data.matchId}`);
+        return;
+      }
       fetchLobby();
     };
-    
+
     // Also listen for match:started so everyone navigates to the game
     const onMatchStarted = (payload: any) => {
       if (payload?.match?.id) {
@@ -51,11 +60,13 @@ export function LobbyPage({ currentUserId, currentUsername }: { currentUserId?: 
       setChatMessages(prev => [...prev, payload]);
     };
 
+    socket.on('connect', onConnect);
     socket.on('lobby:changed', onLobbyChanged);
     socket.on('match:started', onMatchStarted);
     socket.on('lobby:chat', onLobbyChat);
 
     return () => {
+      socket.off('connect', onConnect);
       socket.off('lobby:changed', onLobbyChanged);
       socket.off('match:started', onMatchStarted);
       socket.off('lobby:chat', onLobbyChat);
@@ -90,8 +101,9 @@ export function LobbyPage({ currentUserId, currentUsername }: { currentUserId?: 
       const payload = await startLobby(lobbyId);
       const matchRes = await startMatch(payload);
       if (!matchRes.match) throw new Error('Match did not initialize.');
+      // Notify before navigating so the component is still mounted when socket emits
+      notifyChange(matchRes.match.id);
       navigate(`/matches/${matchRes.match.id}`);
-      notifyChange(); // notify others if needed, but match:started should be used.
     } catch (e) {
       alert('Failed to start game: ' + (e instanceof Error ? e.message : String(e)));
     }
