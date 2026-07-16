@@ -15,7 +15,7 @@ export class MatchesController {
 
   async getMatch(request: Request, response: Response) {
     try {
-      const payload = await matchesService.getMatch(this.readRouteParam(request.params.matchId));
+      const payload = await matchesService.getMatch(this.readRouteParam(request.params.matchId), request.auth?.userId);
       return response.status(200).json(payload);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load match.';
@@ -72,6 +72,16 @@ export class MatchesController {
       return response.status(201).json(payload);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to submit task.';
+      return response.status(400).json({ message });
+    }
+  }
+
+  async getCommits(request: Request, response: Response) {
+    try {
+      const commits = await matchesService.getCommits(this.readRouteParam(request.params.matchId));
+      return response.status(200).json(commits);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load commits.';
       return response.status(400).json({ message });
     }
   }

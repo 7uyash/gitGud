@@ -51,6 +51,7 @@ export interface MatchStateDto {
     userId: string;
     username: string;
   }[];
+  myTaskId?: string;
 }
 
 export interface MatchResultDto {

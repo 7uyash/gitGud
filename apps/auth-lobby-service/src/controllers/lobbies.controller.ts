@@ -103,6 +103,21 @@ export class LobbiesController {
     }
   }
 
+  async joinLobbyByCode(request: Request, response: Response) {
+    try {
+      const claims = request.auth;
+      if (!claims) {
+        return response.status(401).json({ message: 'Unauthorized' });
+      }
+
+      const lobby = await lobbiesService.joinLobbyByCode(readRouteParam(request.params.code), claims.userId);
+      return response.status(200).json(lobby);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to join lobby by code.';
+      return response.status(400).json({ message });
+    }
+  }
+
   async getLobby(request: Request, response: Response) {
     try {
       const claims = request.auth;
