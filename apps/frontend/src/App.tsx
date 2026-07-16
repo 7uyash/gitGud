@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useNavigate, useParams, useLocation } from 'react-router-dom';
 
 import {
   createLobby,
@@ -101,7 +101,7 @@ function AppShell() {
 
   return (
     <div className="app-shell">
-      <SiteHeader isAuthed={Boolean(auth.token)} onLogout={auth.signOut} />
+      <SiteHeader isAuthed={Boolean(auth.token)} user={auth.user} onLogout={auth.signOut} />
       <main className="frame">
         <Routes>
           <Route path="/" element={<LandingPage isAuthed={Boolean(auth.token)} />} />
@@ -140,21 +140,54 @@ function AppShell() {
   );
 }
 
-function SiteHeader({ isAuthed, onLogout }: { isAuthed: boolean; onLogout: () => Promise<void> }) {
+function getRank(totalMatches: number) {
+  if (totalMatches === 0) return 'NEWBIE';
+  if (totalMatches < 5)  return 'RUBBER DUCK';
+  if (totalMatches < 15) return 'JUNIOR DEV';
+  if (totalMatches < 30) return 'MID-LEVEL';
+  return 'SENIOR';
+}
+
+function SiteHeader({ isAuthed, user, onLogout }: { isAuthed: boolean; user: CurrentUser | null; onLogout: () => Promise<void> }) {
+  const location = useLocation();
+  const isInGame = location.pathname.startsWith('/matches/') || location.pathname.startsWith('/lobbies/');
+
   return (
     <header className="topbar" style={{ background: 'transparent', borderBottom: '1px solid var(--border-color)', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderRadius: '0' }}>
-      <Link to="/" className="brand">
+      <Link to={isAuthed ? '/dashboard' : '/'} className="brand">
         <span className="brand-mark" style={{ background: 'transparent', border: '1px solid var(--text-primary)', borderRadius: '4px', boxShadow: 'none' }} />
         <span>GitGud</span>
       </Link>
       <nav className="topnav">
-        <Link to="/docs">DOCS</Link>
-        <Link to="/about">ABOUT</Link>
-        <Link to="/github">GITHUB</Link>
-        {isAuthed ? (
-          <button className="button ghost" onClick={onLogout}>LOGOUT</button>
+        {isInGame && isAuthed && user ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt={user.username} style={{ width: '28px', height: '28px', borderRadius: '50%', border: '1px solid var(--border-color)', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'grid', placeItems: 'center', fontSize: '0.8rem', border: '1px solid var(--border-color)' }}>
+                  {user.displayName?.[0] ?? user.username?.[0] ?? '?'}
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>@{user.username}</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>{getRank(0)}</span>
+              </div>
+            </div>
+            <Link to="/dashboard" style={{ fontSize: '0.8rem', opacity: 0.7 }}>DASHBOARD</Link>
+            <button className="button ghost" onClick={onLogout} style={{ fontSize: '0.8rem' }}>LOGOUT</button>
+          </>
         ) : (
-          <Link to="/login" className="button ghost" style={{ textTransform: 'none' }}>Login with GitHub</Link>
+          <>
+            <Link to="/docs" style={{ opacity: 0.5 }}>DOCS</Link>
+            <Link to="/about" style={{ opacity: 0.5 }}>ABOUT</Link>
+            <Link to="/github" style={{ opacity: 0.5 }}>GITHUB</Link>
+            {isAuthed ? (
+              <button className="button ghost" onClick={onLogout}>LOGOUT</button>
+            ) : (
+              <Link to="/login" className="button ghost" style={{ textTransform: 'none' }}>Login with GitHub</Link>
+            )}
+          </>
         )}
       </nav>
     </header>
