@@ -1,20 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
-export function EmergencyMeeting({ 
+export function EmergencyMeeting({
   meeting,
   players,
   myUserId,
+  myUsername,
   onVote,
-  onClose 
-}: { 
+  onClose,
+  chatMessages,
+  onSendMessage,
+}: {
   meeting: any;
   players: any[];
   myUserId: string;
+  myUsername?: string;
   onVote: (targetId: string | 'skip') => void;
   onClose?: () => void;
+  chatMessages?: Array<{ username: string; text: string; isSystem?: boolean }>;
+  onSendMessage?: (text: string) => void;
 }) {
   const [timeLeft, setTimeLeft] = useState(0);
   const [myVote, setMyVote] = useState<string | null>(null);
+  const [chatInput, setChatInput] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const updateTimer = () => {
@@ -32,10 +40,18 @@ export function EmergencyMeeting({
     return `${m}:${s}`;
   };
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
   const handleConfirmVote = () => {
-    if (myVote) {
-      onVote(myVote);
-    }
+    if (myVote) onVote(myVote);
+  };
+
+  const handleSendChat = () => {
+    if (!chatInput.trim() || !onSendMessage) return;
+    onSendMessage(chatInput.trim());
+    setChatInput('');
   };
 
   return (
@@ -54,57 +70,69 @@ export function EmergencyMeeting({
         {/* Left Sidebar */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div className="surface" style={{ borderColor: 'var(--accent-color)' }}>
-            <p className="kicker">Pinned Commit</p>
-            <div style={{ marginTop: '12px' }}>
-              <strong>3f2a1c9</strong> <span className="muted">· @null_ninja</span>
-              <p style={{ margin: '8px 0', fontSize: '0.9rem' }}>FEAT(FEED): PAGINATE POSTS ENDPOINT</p>
-              <pre style={{ background: 'rgba(0,0,0,0.3)', padding: '8px', borderRadius: '4px', fontSize: '0.8rem', color: 'var(--success-color)' }}>
-                + if (!res.ok) return [];
-              </pre>
-              <button className="button ghost" style={{ width: '100%', marginTop: '12px' }}>Open diff →</button>
+            <p className="kicker">Meeting Called By</p>
+            <div style={{ marginTop: '12px', fontSize: '0.95rem' }}>
+              <strong>{players.find(p => p.id === meeting.callerUserId)?.name ?? 'Unknown'}</strong>
             </div>
+            <p style={{ marginTop: '8px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>{meeting.reason}</p>
           </div>
-          
+
           <div className="surface" style={{ flex: 1 }}>
-            <p className="kicker">Recent Activity</p>
-            <ul style={{ paddingLeft: '20px', fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <li>@hex_wizard approved #12</li>
-              <li>@mergequeen approved #11</li>
-              <li>@null_ninja pushed 3f2a1c9</li>
-            </ul>
+            <p className="kicker">Players</p>
+            <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {players.map(p => (
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: p.hasVoted ? 'var(--success-color)' : 'var(--border-color)', flexShrink: 0 }} />
+                  <span style={{ color: p.id === myUserId ? 'var(--accent-color)' : 'inherit' }}>
+                    {p.name}{p.id === myUserId ? ' (you)' : ''}
+                  </span>
+                  {p.hasVoted && <span className="muted" style={{ fontSize: '0.75rem', marginLeft: 'auto' }}>voted</span>}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Center Vote Grid */}
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <p className="kicker" style={{ marginBottom: '16px', textAlign: 'center' }}>Who is the imposter? · Tap to vote</p>
+          <p className="kicker" style={{ marginBottom: '16px', textAlign: 'center' }}>Who is the imposter? · Select to vote</p>
           <div className="vote-grid">
-            {players.map(p => (
-              <div 
-                key={p.id} 
-                className={`vote-card ${myVote === p.id ? 'selected' : ''}`}
-                onClick={() => setMyVote(p.id)}
-              >
-                <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', margin: '0 auto', display: 'grid', placeItems: 'center' }}>
-                  {p.id.toUpperCase()}
+            {players.map(p => {
+              const alreadyVoted = players.find(x => x.id === myUserId)?.hasVoted;
+              const isSelected = myVote === p.id;
+              return (
+                <div
+                  key={p.id}
+                  className={`vote-card ${isSelected ? 'selected' : ''}`}
+                  onClick={() => !alreadyVoted && setMyVote(p.id)}
+                  style={{ cursor: alreadyVoted ? 'default' : 'pointer' }}
+                >
+                  {p.avatarUrl ? (
+                    <img src={p.avatarUrl} alt={p.name} style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', margin: '0 auto', display: 'block' }} />
+                  ) : (
+                    <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', margin: '0 auto', display: 'grid', placeItems: 'center', fontSize: '1.4rem', fontWeight: 700, border: isSelected ? '2px solid var(--danger-color)' : '2px solid transparent' }}>
+                      {p.initial ?? p.name?.[1]?.toUpperCase() ?? '?'}
+                    </div>
+                  )}
+                  <strong style={{ fontSize: '1rem' }}>{p.name}</strong>
+                  <div style={{ marginTop: 'auto', fontSize: '0.8rem', padding: '4px 8px', borderRadius: '4px', background: p.hasVoted ? 'rgba(255,255,255,0.05)' : isSelected ? 'var(--danger-color)' : 'transparent', color: p.hasVoted ? 'var(--success-color)' : isSelected ? '#000' : 'var(--text-muted)', border: p.hasVoted ? 'none' : '1px solid var(--border-color)' }}>
+                    {p.hasVoted ? '✓ Voted' : isSelected ? '● Selected' : 'Select'}
+                  </div>
                 </div>
-                <strong style={{ fontSize: '1.1rem' }}>{p.name}</strong>
-                {/* <span className="muted" style={{ fontSize: '0.8rem' }}>Votes: {p.votes}</span> */}
-                <button className={`button ${p.hasVoted ? 'ghost' : ''}`} style={{ marginTop: 'auto' }}>
-                  {p.hasVoted ? '✓ Voted' : 'Vote'}
-                </button>
-              </div>
-            ))}
-            <div 
+              );
+            })}
+            <div
               className={`vote-card skip ${myVote === 'skip' ? 'selected' : ''}`}
-              onClick={() => setMyVote('skip')}
+              onClick={() => !players.find(x => x.id === myUserId)?.hasVoted && setMyVote('skip')}
+              style={{ cursor: players.find(x => x.id === myUserId)?.hasVoted ? 'default' : 'pointer' }}
             >
-              <div style={{ width: '60px', height: '60px', borderRadius: '50%', margin: '0 auto', display: 'grid', placeItems: 'center', border: '1px dashed var(--text-muted)' }}>
+              <div style={{ width: '60px', height: '60px', borderRadius: '50%', margin: '0 auto', display: 'grid', placeItems: 'center', border: '1px dashed var(--text-muted)', fontSize: '1.5rem' }}>
                 ⏭
               </div>
-              <strong style={{ fontSize: '1.1rem' }}>Skip vote</strong>
-              {/* <span className="muted" style={{ fontSize: '0.8rem' }}>Votes: 1</span> */}
-              <button className="button" style={{ marginTop: 'auto' }}>Vote Skip</button>
+              <strong style={{ fontSize: '1rem' }}>Skip vote</strong>
+              <div style={{ marginTop: 'auto', fontSize: '0.8rem', padding: '4px 8px', borderRadius: '4px', color: myVote === 'skip' ? 'var(--accent-color)' : 'var(--text-muted)' }}>
+                {myVote === 'skip' ? '● Selected' : 'Select'}
+              </div>
             </div>
           </div>
         </div>
@@ -115,16 +143,27 @@ export function EmergencyMeeting({
             <p className="kicker">Discussion</p>
           </div>
           <div className="chat-messages">
-            <div style={{ fontSize: '0.9rem' }}><strong style={{ color: 'var(--accent-color)' }}>@octoplayer:</strong> that early return is not it</div>
-            <div style={{ fontSize: '0.9rem' }}><strong>@null_ninja:</strong> it's defensive coding!</div>
-            <div style={{ fontSize: '0.9rem' }}><strong>@debugbird:</strong> it silently returns [] on 500...</div>
-            <div style={{ fontSize: '0.9rem' }}><strong>@mergequeen:</strong> I approved too fast, my bad</div>
-            <div style={{ fontSize: '0.9rem' }}><strong>@hex_wizard:</strong> could just be junior style</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', margin: '8px 0' }}>- voting begins in 00:47 -</div>
+            {(!chatMessages || chatMessages.length === 0) ? (
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '16px' }}>No messages yet. Discuss!</div>
+            ) : (
+              chatMessages.filter(m => !m.isSystem).map((msg, i) => (
+                <div key={i} style={{ fontSize: '0.9rem' }}>
+                  <strong style={{ color: msg.username === myUsername ? 'var(--accent-color)' : 'inherit' }}>@{msg.username}:</strong> {msg.text}
+                </div>
+              ))
+            )}
+            <div ref={chatEndRef} />
           </div>
           <div className="chat-input-bar">
-            <input type="text" placeholder="Message..." style={{ flex: 1 }} />
-            <button className="button ghost">Send</button>
+            <input
+              type="text"
+              placeholder="Message..."
+              style={{ flex: 1 }}
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSendChat()}
+            />
+            <button className="button ghost" onClick={handleSendChat}>Send</button>
           </div>
         </div>
       </div>
