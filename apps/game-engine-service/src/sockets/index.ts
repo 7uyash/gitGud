@@ -22,11 +22,43 @@ interface MeetingState {
 }
 const activeMeetings: Record<string, MeetingState> = {};
 
+// Server-side timer: track which matches are actively ticking
+const timerMatchIds = new Set<string>();
+
+function startTimerLoop() {
+  setInterval(async () => {
+    for (const matchId of timerMatchIds) {
+      try {
+        const updated = await matchesService.tickTimer(matchId, 1);
+        if (!updated) {
+          timerMatchIds.delete(matchId);
+          continue;
+        }
+        // Broadcast authoritative timer + ship readiness so all clients stay in sync
+        ioInstance?.to(matchRoom(matchId)).emit('match:tick', {
+          matchId,
+          timerSecondsRemaining: updated.timerSecondsRemaining,
+          shipReadiness: updated.shipReadiness,
+        });
+        // If the match just finished (tickTimer triggered finishMatch), stop ticking and notify
+        if (updated.status === 'finished') {
+          timerMatchIds.delete(matchId);
+          const result = await matchesService.getRecap(matchId);
+          ioInstance?.to(matchRoom(matchId)).emit('match:ended', result);
+        }
+      } catch {
+        timerMatchIds.delete(matchId);
+      }
+    }
+  }, 1000);
+}
+
 export function setGameSocketServer(io: Server) {
   ioInstance = io;
 }
 
 export function broadcastMatchStarted(lobbyId: string, matchId: string, payload: MatchInitializationResponse) {
+  timerMatchIds.add(matchId);
   // Broadcast to the lobby room so all players in the lobby navigate to the match
   ioInstance?.to(`lobby:${lobbyId}`).emit('match:started', payload);
   // Also broadcast to the match room for any early joiners
@@ -46,19 +78,20 @@ export function broadcastSubmissionReviewed(payload: TaskSubmissionResponse) {
 }
 
 async function joinMatchRoom(socket: Socket, payload: { matchId: string; token: string }) {
-  verifyGameToken(payload.token);
+  const claims = verifyGameToken(payload.token);
   const match = await matchesService.getMatch(payload.matchId);
   if (!match.match) {
     throw new Error('Match not found.');
   }
 
   await socket.join(matchRoom(payload.matchId));
-  socket.emit('player:connected', { userId: payload.token });
+  socket.emit('player:connected', { userId: claims.userId });
   socket.emit('match:joined', match);
 }
 
 export function registerGameSockets(io: Server) {
   setGameSocketServer(io);
+  startTimerLoop();
   io.on('connection', (socket) => {
     socket.emit('player:connected', { userId: socket.id });
 
@@ -98,10 +131,10 @@ export function registerGameSockets(io: Server) {
 
     socket.on('task:submit', async (payload: { matchId: string; token: string; taskText: string }) => {
       try {
-        verifyGameToken(payload.token);
+        const decoded = verifyGameToken(payload.token);
         const result = await matchesService.reviewTaskSubmission({
           matchId: payload.matchId,
-          userId: socket.id,
+          userId: decoded.userId,
           taskText: payload.taskText,
         });
         broadcastSubmissionReviewed(result);
@@ -240,4 +273,11 @@ function endMeeting(matchId: string) {
   });
 
   delete activeMeetings[matchId];
+
+  if (ejectedPlayerId) {
+    // Persist ejection and check win conditions
+    matchesService.resolveEjection(matchId, ejectedPlayerId).catch(err => {
+      console.error('[endMeeting] Failed to resolve ejection:', err);
+    });
+  }
 }

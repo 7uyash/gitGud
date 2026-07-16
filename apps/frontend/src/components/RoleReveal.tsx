@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 
-export function RoleReveal({ onComplete }: { onComplete: () => void }) {
+export function RoleReveal({ onComplete, role }: { onComplete: () => void; role?: string }) {
   const [countdown, setCountdown] = useState(10);
-  const isImposter = Math.random() > 0.5; // Randomize for preview purposes
+  const isImposter = role === 'imposter';
 
   useEffect(() => {
     if (countdown <= 0) {

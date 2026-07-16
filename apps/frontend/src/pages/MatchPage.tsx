@@ -51,21 +51,7 @@ export function Feed() {
   const [recapPayload, setRecapPayload] = useState<any>(null);
   const [showRecap, setShowRecap] = useState(false);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setMatchState((prev: any) => {
-        if (!prev?.match || prev.match.timerSecondsRemaining <= 0) return prev;
-        return {
-          ...prev,
-          match: {
-            ...prev.match,
-            timerSecondsRemaining: prev.match.timerSecondsRemaining - 1
-          }
-        };
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  // Timer is driven by server match:tick events — no independent client countdown.
 
   useEffect(() => {
     if (!matchId) return;
@@ -127,6 +113,20 @@ export function Feed() {
       setRecapPayload(payload);
     };
 
+    const onMatchTick = (payload: { timerSecondsRemaining: number; shipReadiness: number }) => {
+      setMatchState((prev: any) => {
+        if (!prev?.match) return prev;
+        return {
+          ...prev,
+          match: {
+            ...prev.match,
+            timerSecondsRemaining: payload.timerSecondsRemaining,
+            shipReadiness: payload.shipReadiness,
+          },
+        };
+      });
+    };
+
     socket.on('editor:change', onEditorChange);
     socket.on('chat:message', onChatMessage);
     socket.on('submission:reviewed', onSubmissionReviewed);
@@ -134,6 +134,7 @@ export function Feed() {
     socket.on('meeting:voted', onMeetingVoted);
     socket.on('meeting:ended', onMeetingEnded);
     socket.on('match:ended', onMatchEnded);
+    socket.on('match:tick', onMatchTick);
 
     return () => {
       mounted = false;
@@ -144,6 +145,7 @@ export function Feed() {
       socket.off('meeting:voted', onMeetingVoted);
       socket.off('meeting:ended', onMeetingEnded);
       socket.off('match:ended', onMatchEnded);
+      socket.off('match:tick', onMatchTick);
       socket.emit('match:leave', { matchId });
     };
   }, [matchId]);
@@ -214,7 +216,9 @@ export function Feed() {
 
   return (
     <>
-      {showRoleReveal && <RoleReveal onComplete={() => setShowRoleReveal(false)} />}
+      {showRoleReveal && matchState?.match && (
+        <RoleReveal onComplete={() => setShowRoleReveal(false)} role={matchState.match.roleAssignments?.[currentUser?.id ?? '']} />
+      )}
 
       {activeMeeting && (
         <EmergencyMeeting

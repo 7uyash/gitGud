@@ -382,6 +382,42 @@ Return JSON with: { "correct": boolean, "explanation": string, "hint": string, "
     return recap;
   }
 
+  /**
+   * Mark a player as ejected, stop their timer, and check all win conditions:
+   * - All imposters ejected → crew wins
+   * - Imposters outnumber or equal remaining crew → imposters win
+   */
+  async resolveEjection(matchId: string, ejectedPlayerId: string) {
+    const match = await this.matchesRepository.getMatch(matchId);
+    if (!match || match.status !== 'active') return;
+
+    const roleAssignments = { ...(match.roleAssignments as Record<string, GameRole>) };
+
+    // Remove the ejected player from future role calculations
+    delete roleAssignments[ejectedPlayerId];
+    await this.matchesRepository.updateMatch(matchId, { roleAssignments });
+
+    const remaining = Object.values(roleAssignments);
+    const remainingImposters = remaining.filter(r => r === 'imposter');
+    const remainingCrew = remaining.filter(r => r === 'crew');
+
+    if (remainingImposters.length === 0) {
+      await this.finishMatch(matchId, {
+        winnerTeam: 'crew',
+        endingReason: 'All imposters have been ejected.',
+        summary: 'The crew successfully identified and ejected all imposters.',
+        learningRecap: this.buildLearningRecap('crew', 'The team identified all imposters through careful code review.'),
+      });
+    } else if (remainingImposters.length >= remainingCrew.length) {
+      await this.finishMatch(matchId, {
+        winnerTeam: 'imposters',
+        endingReason: 'Imposters now equal or outnumber the remaining crew.',
+        summary: 'Too many crewmates were ejected. The imposters have taken over.',
+        learningRecap: this.buildLearningRecap('imposters', 'The imposters blended in long enough to outlast the crew.'),
+      });
+    }
+  }
+
   private assignRoles(playerIds: string[]): Record<string, GameRole> {
     const shuffledPlayerIds = shuffle(playerIds);
     const roleAssignments: Record<string, GameRole> = {};
