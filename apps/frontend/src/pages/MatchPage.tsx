@@ -103,11 +103,14 @@ export function Feed() {
       setMatchState((currentMatchState: any) => {
         setMeetingPlayers(Object.keys(currentMatchState?.match?.roleAssignments || {}).map(id => {
           const p = currentMatchState?.players?.find((x: any) => x.userId === id);
+          const username = p?.username ?? id.substring(0, 4);
           return {
             id,
-            name: p?.username ? `@${p.username}` : `@player_${id.substring(0, 4)}`,
+            name: `@${username}`,
+            avatarUrl: p?.avatarUrl ?? null,
+            initial: username[0]?.toUpperCase() ?? '?',
             hasVoted: false,
-            votes: 0
+            votes: 0,
           };
         }));
         return currentMatchState;
@@ -287,6 +290,12 @@ export function Feed() {
           meeting={activeMeeting}
           players={meetingPlayers}
           myUserId={currentUser?.id ?? ''}
+          myUsername={currentUser?.username}
+          chatMessages={chatMessages}
+          onSendMessage={(text) => {
+            const msg = { matchId, username: currentUser?.username ?? 'guest', text };
+            getGameSocket().emit('chat:message', msg);
+          }}
           onVote={(targetId) => getGameSocket().emit('meeting:vote', { matchId, token: getToken(), targetUserId: targetId })}
         />
       )}

@@ -68,7 +68,7 @@ export async function createLobby(maxPlayers: number) {
 }
 
 export async function listPublicLobbies() {
-  return request<Array<{ id: string; maxPlayers: number; joinCode: string; status: string }>>(authBaseUrl, '/lobbies/public');
+  return request<Array<{ id: string; maxPlayers: number; joinCode: string; status: string; playerCount: number; createdAt: string }>>(authBaseUrl, '/lobbies/public');
 }
 
 export async function getMyMatches() {

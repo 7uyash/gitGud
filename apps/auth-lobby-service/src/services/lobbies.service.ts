@@ -53,8 +53,19 @@ export class LobbiesService {
 
   async listPublicLobbies() {
     const lobbies = await this.lobbiesRepository.listPublicLobbies();
-    // Return them with some basic formatting or just the entities
-    return lobbies.map(l => ({ id: l.id, maxPlayers: l.maxPlayers, joinCode: l.joinCode, status: l.status }));
+    return Promise.all(
+      lobbies.map(async (l) => {
+        const players = await this.lobbiesRepository.listLobbyPlayers(l.id);
+        return {
+          id: l.id,
+          maxPlayers: l.maxPlayers,
+          joinCode: l.joinCode,
+          status: l.status,
+          playerCount: players.length,
+          createdAt: l.createdAt instanceof Date ? l.createdAt.toISOString() : String(l.createdAt),
+        };
+      }),
+    );
   }
 
   async startLobby(lobbyId: string, hostUserId: string): Promise<LobbyStartPayload> {
