@@ -5,7 +5,8 @@ import { EmergencyMeeting } from '../components/EmergencyMeeting';
 import { VotingResult } from '../components/VotingResult';
 import { GameOver } from '../components/GameOver';
 import { LearningRecap } from '../components/LearningRecap';
-import { getMatch, submitTask } from '../api';
+import { getMatch, submitTask, getMatchCommits } from '../api';
+import type { CommitDto } from '../api';
 import { getGameSocket } from '../socket';
 import { getToken } from '../auth';
 
@@ -50,6 +51,8 @@ export function Feed() {
   const [meetingPlayers, setMeetingPlayers] = useState<any[]>([]);
   const [recapPayload, setRecapPayload] = useState<any>(null);
   const [showRecap, setShowRecap] = useState(false);
+  const [commits, setCommits] = useState<CommitDto[]>([]);
+  const [showCommits, setShowCommits] = useState(false);
 
   // Timer is driven by server match:tick events — no independent client countdown.
 
@@ -184,6 +187,17 @@ export function Feed() {
     getGameSocket().emit('meeting:called', { matchId, token: getToken(), reason });
   };
 
+  const handleViewCommits = async () => {
+    if (!matchId) return;
+    try {
+      const result = await getMatchCommits(matchId);
+      setCommits(result);
+      setShowCommits(true);
+    } catch {
+      alert('Failed to load commits');
+    }
+  };
+
   const handleEndMatch = () => {
     if (!matchId) return;
     getGameSocket().emit('match:end', { matchId, token: getToken(), winnerTeam: 'CREW' });
@@ -193,6 +207,7 @@ export function Feed() {
     return <div style={{ padding: '48px', textAlign: 'center' }}>Loading match...</div>;
   }
 
+  const myTask = matchState.tasks?.find((t: any) => t.id === matchState.myTaskId) ?? null;
   const role = matchState.match?.roleAssignments?.[currentUser?.id ?? ''] ?? 'CREWMATE';
   const roleName = role.toUpperCase();
 
@@ -218,6 +233,41 @@ export function Feed() {
     <>
       {showRoleReveal && matchState?.match && (
         <RoleReveal onComplete={() => setShowRoleReveal(false)} role={matchState.match.roleAssignments?.[currentUser?.id ?? '']} />
+      )}
+
+      {showCommits && (
+        <div className="meeting-overlay" style={{ zIndex: 998 }}>
+          <div className="surface" style={{ maxWidth: '700px', width: '100%', margin: '0 auto', padding: '32px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <h2 style={{ margin: 0 }}>Commit History</h2>
+              <button className="button ghost" onClick={() => setShowCommits(false)}>Close</button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {commits.length === 0 ? (
+                <div className="muted" style={{ textAlign: 'center', padding: '24px' }}>No commits yet.</div>
+              ) : (
+                commits.map(c => (
+                  <div key={c.id} style={{ padding: '12px 16px', border: '1px solid var(--border-color)', borderRadius: '4px', background: 'rgba(255,255,255,0.02)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <strong style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>{c.message}</strong>
+                      <span className={`kicker`} style={{ color: c.reviewStatus === 'approved' ? 'var(--success-color)' : c.reviewStatus === 'rejected' ? 'var(--danger-color)' : 'var(--text-muted)' }}>
+                        {c.reviewStatus.toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="muted" style={{ fontSize: '0.8rem', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
+                      {c.commitHash.substring(0, 8)} · {new Date(c.createdAt).toLocaleTimeString()}
+                    </div>
+                    {c.diffText && (
+                      <pre style={{ marginTop: '8px', fontSize: '0.8rem', background: '#1e1e1e', padding: '8px', borderRadius: '4px', overflowX: 'auto', maxHeight: '120px', color: '#abb2bf' }}>
+                        {c.diffText.substring(0, 300)}{c.diffText.length > 300 ? '...' : ''}
+                      </pre>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {activeMeeting && (
@@ -271,18 +321,26 @@ export function Feed() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: 0 }}>
           <div className="surface" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
-              <p className="kicker">MY TASKS · 3 OF 5</p>
+              <p className="kicker">MY TASK</p>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {matchState.tasks?.map((t: any) => (
-                <div key={t.id} className={`task-card ${t.status === 'completed' ? 'completed' : t.status === 'in_progress' ? 'active' : ''}`}>
-                  <span style={{ color: t.status === 'completed' ? 'var(--success-color)' : 'var(--text-muted)' }}>
-                    {t.status === 'completed' ? '☑' : t.status === 'in_progress' ? '◐' : '☐'}
-                  </span> {t.title}
+              {myTask ? (
+                <div className={`task-card ${myTask.status === 'done' ? 'completed' : myTask.status === 'in_progress' ? 'active' : ''}`}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                    <span style={{ color: myTask.status === 'done' ? 'var(--success-color)' : 'var(--text-muted)', flexShrink: 0 }}>
+                      {myTask.status === 'done' ? '☑' : myTask.status === 'in_progress' ? '◐' : '☐'}
+                    </span>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{myTask.title}</div>
+                      <div className="muted" style={{ fontSize: '0.8rem', marginTop: '4px' }}>{myTask.description}</div>
+                      {myTask.isSabotage && (
+                        <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--danger-color)' }}>SABOTAGE TASK</div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              ))}
-              {matchState.tasks?.length === 0 && (
-                <div className="muted" style={{ padding: '8px' }}>No tasks assigned.</div>
+              ) : (
+                <div className="muted" style={{ padding: '8px' }}>No task assigned yet.</div>
               )}
             </div>
 
@@ -451,8 +509,7 @@ export function Feed() {
         <div className="surface" style={{ gridColumn: '1 / -1', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
           <div style={{ display: 'flex', gap: '12px' }}>
             <button className="button ghost">Run tests</button>
-            <button className="button ghost">View commit history</button>
-            <button className="button ghost">Review open diffs (3)</button>
+            <button className="button ghost" onClick={handleViewCommits}>View commit history ({commits.length})</button>
           </div>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <span className="kicker">FILE: {activeTab.toUpperCase()}</span>

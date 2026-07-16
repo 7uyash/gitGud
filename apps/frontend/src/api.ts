@@ -79,6 +79,10 @@ export async function getLobby(lobbyId: string) {
   return request<{ lobby: { id: string; hostUserId: string; status: string; maxPlayers: number; joinCode: string; createdAt: string }; players: Array<{ userId: string; username: string; avatarUrl: string; displayName: string; isReady: boolean }> }>(authBaseUrl, `/lobbies/${lobbyId}`);
 }
 
+export async function joinLobbyByCode(code: string) {
+  return request<ReturnType<typeof getLobby> extends Promise<infer T> ? T : never>(authBaseUrl, `/lobbies/by-code/${encodeURIComponent(code.toUpperCase())}/join`, { method: 'POST' });
+}
+
 export async function joinLobby(lobbyId: string) {
   return request<ReturnType<typeof getLobby> extends Promise<infer T> ? T : never>(authBaseUrl, `/lobbies/${lobbyId}/join`, { method: 'POST' });
 }
@@ -109,6 +113,21 @@ export async function startMatch(payload: { lobbyId: string; playerIds: string[]
 
 export async function getMatch(matchId: string) {
   return request<MatchStateDto>(gameBaseUrl, `/matches/${matchId}`);
+}
+
+export interface CommitDto {
+  id: string;
+  matchId: string;
+  userId: string;
+  commitHash: string;
+  message: string;
+  diffText: string;
+  reviewStatus: string;
+  createdAt: string;
+}
+
+export async function getMatchCommits(matchId: string) {
+  return request<CommitDto[]>(gameBaseUrl, `/matches/${matchId}/commits`);
 }
 
 export async function getPlayerRecap(matchId: string, userId: string) {

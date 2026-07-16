@@ -43,6 +43,14 @@ export class LobbiesService {
     return this.getLobbySnapshot(lobbyId);
   }
 
+  async joinLobbyByCode(joinCode: string, userId: string): Promise<LobbySnapshotResponse> {
+    const lobby = await this.lobbiesRepository.findLobbyByJoinCode(joinCode.toUpperCase());
+    if (!lobby) {
+      throw new Error('Lobby not found for that room code.');
+    }
+    return this.joinLobby(lobby.id, userId);
+  }
+
   async listPublicLobbies() {
     const lobbies = await this.lobbiesRepository.listPublicLobbies();
     // Return them with some basic formatting or just the entities
