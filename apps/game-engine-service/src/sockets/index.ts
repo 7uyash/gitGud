@@ -121,6 +121,10 @@ export function registerGameSockets(io: Server) {
       socket.to(`lobby:${lobbyId}`).emit('lobby:changed');
     });
 
+    socket.on('lobby:chat', (payload: { lobbyId: string; username: string; text: string }) => {
+      io.to(`lobby:${payload.lobbyId}`).emit('lobby:chat', payload);
+    });
+
     socket.on('editor:change', (payload: { matchId: string; file: string; content: string }) => {
       socket.to(matchRoom(payload.matchId)).emit('editor:change', payload);
     });

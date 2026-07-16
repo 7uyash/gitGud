@@ -3,10 +3,11 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { getLobby, leaveLobby, setReady, startLobby, startMatch } from '../api';
 import { getGameSocket } from '../socket';
 
-export function LobbyPage({ currentUserId }: { currentUserId?: string }) {
+export function LobbyPage({ currentUserId, currentUsername }: { currentUserId?: string; currentUsername?: string }) {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
   const [chatMessage, setChatMessage] = useState('');
+  const [chatMessages, setChatMessages] = useState<Array<{ username: string; text: string; isSystem?: boolean }>>([]);
   const [lobbyState, setLobbyState] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -46,15 +47,28 @@ export function LobbyPage({ currentUserId }: { currentUserId?: string }) {
       }
     };
 
+    const onLobbyChat = (payload: { username: string; text: string; isSystem?: boolean }) => {
+      setChatMessages(prev => [...prev, payload]);
+    };
+
     socket.on('lobby:changed', onLobbyChanged);
     socket.on('match:started', onMatchStarted);
+    socket.on('lobby:chat', onLobbyChat);
 
     return () => {
       socket.off('lobby:changed', onLobbyChanged);
       socket.off('match:started', onMatchStarted);
+      socket.off('lobby:chat', onLobbyChat);
       socket.emit('lobby:unwatch', lobbyId);
     };
   }, [lobbyId, navigate]);
+
+  const handleSendChat = () => {
+    if (!chatMessage.trim() || !lobbyId) return;
+    const socket = getGameSocket();
+    socket.emit('lobby:chat', { lobbyId, username: currentUsername ?? 'guest', text: chatMessage.trim() });
+    setChatMessage('');
+  };
 
   const handleLeave = async () => {
     if (!lobbyId) return;
@@ -255,16 +269,31 @@ export function LobbyPage({ currentUserId }: { currentUserId?: string }) {
         </div>
         
         <div style={{ flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>- system: octoplayer created the room</div>
-          <div style={{ fontSize: '0.9rem' }}><strong style={{ color: 'var(--accent-color)' }}>@debugbird:</strong> gm</div>
-          <div style={{ fontSize: '0.9rem' }}><strong>@mergequeen:</strong> hyped, first time playing</div>
-          <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>- system: hex_wizard is ready</div>
-          <div style={{ fontSize: '0.9rem' }}><strong>@null_ninja:</strong> waiting on sam</div>
+          {chatMessages.length === 0 ? (
+            <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>No messages yet. Say hello!</div>
+          ) : (
+            chatMessages.map((msg, i) => (
+              <div key={i} style={{ fontSize: '0.9rem', color: msg.isSystem ? 'var(--text-muted)' : 'inherit' }}>
+                {msg.isSystem ? (
+                  `- system: ${msg.text}`
+                ) : (
+                  <><strong style={{ color: msg.username === currentUsername ? 'var(--accent-color)' : 'inherit' }}>@{msg.username}:</strong> {msg.text}</>
+                )}
+              </div>
+            ))
+          )}
         </div>
 
         <div style={{ padding: '16px', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '8px' }}>
-          <input type="text" placeholder="Message..." value={chatMessage} onChange={e => setChatMessage(e.target.value)} style={{ margin: 0, flex: 1 }} />
-          <button className="button ghost">Send</button>
+          <input
+            type="text"
+            placeholder="Message..."
+            value={chatMessage}
+            onChange={e => setChatMessage(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSendChat()}
+            style={{ margin: 0, flex: 1 }}
+          />
+          <button className="button ghost" onClick={handleSendChat}>Send</button>
         </div>
       </div>
     </div>
