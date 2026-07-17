@@ -1,7 +1,7 @@
 from typing import TypedDict, Annotated, List, Dict, Any
 from langgraph.graph import StateGraph, END
-from langchain.prompts import ChatPromptTemplate
-from langchain_community.chat_models import ChatGroq
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_groq import ChatGroq
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
 import os

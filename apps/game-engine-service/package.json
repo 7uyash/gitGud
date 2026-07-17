@@ -2,8 +2,8 @@
   "name": "@gitgud/game-engine-service",
   "private": true,
   "version": "0.0.0",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/apps/game-engine-service/src/index.js",
+  "types": "dist/apps/game-engine-service/src/index.d.ts",
   "scripts": {
     "dev": "tsx watch --env-file=../../.env src/index.ts",
     "build": "tsc -p tsconfig.json",
