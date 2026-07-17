@@ -18,8 +18,11 @@ function readNumberEnv(name: string, fallback: number): number {
 }
 
 function readRequiredEnv(name: string, fallback?: string): string {
-  const rawValue = process.env[name] ?? fallback;
-  if (!rawValue) {
+  const rawValue = process.env[name];
+  if (rawValue === undefined || rawValue === null || rawValue === '') {
+    if (fallback !== undefined) {
+      return fallback;
+    }
     throw new Error(`${name} is required.`);
   }
 
