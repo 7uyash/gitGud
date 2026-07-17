@@ -12,7 +12,10 @@ import {
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
-  githubId: text('github_id').notNull().unique(),
+  githubId: text('github_id').unique(),
+  googleId: text('google_id').unique(),
+  email: text('email').unique(),
+  passwordHash: text('password_hash'),
   username: text('username').notNull(),
   avatarUrl: text('avatar_url').notNull(),
   displayName: text('display_name').notNull(),

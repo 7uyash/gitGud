@@ -138,16 +138,12 @@ export class AuthController {
             avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${username}`,
           })
           .returning();
-
-        if (email) {
-          emailService.sendWelcomeEmail(email, user.username);
-        }
       }
 
       const token = sign(
         { userId: user.id, username: user.username },
         authLobbyEnv.jwtSecret,
-        { expiresIn: '24h' }
+        { expiresIn: '12h' },
       );
 
       return response.status(200).json({ token });
