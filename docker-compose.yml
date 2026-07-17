@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: gitgud
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gitgud"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  auth-lobby-service:
+    build:
+      context: .
+      dockerfile: apps/auth-lobby-service/Dockerfile
+    ports:
+      - "4101:4101"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgres://postgres:password@db:5432/gitgud
+      - JWT_SECRET=${JWT_SECRET:-gitgud-dev-secret}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SES_FROM_EMAIL=${AWS_SES_FROM_EMAIL}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  ai-agent-service:
+    build:
+      context: .
+      dockerfile: apps/ai-agent-service/Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+
+  game-engine-service:
+    build:
+      context: .
+      dockerfile: apps/game-engine-service/Dockerfile
+    ports:
+      - "4102:4102"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgres://postgres:password@db:5432/gitgud
+      - JWT_SECRET=${JWT_SECRET:-gitgud-dev-secret}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    ports:
+      - "80:80"
+
+volumes:
+  pgdata:
